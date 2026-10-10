@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { EventBus } from '../EventBus';
 import { currentLevelData } from '../bridge';
 import { SceneKeys } from '../constants';
-import { ASSET_MANIFEST, queueAssets } from '../assets';
+import { ART_RESOLUTION_KEY, chooseArtResolution, getAssetManifest, queueAssets } from '../assets';
+import { computeCameraZoom } from '../scaling';
 
 /**
  * Loads every asset in the manifest, reports progress to the React loading
@@ -19,7 +20,11 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
       console.error(`[Preload] Failed to load asset "${file.key}" from ${String(file.url)}`);
     });
-    queueAssets(this.load, ASSET_MANIFEST);
+    // Pick the texture resolution once, from the zoom this screen will use.
+    const { width, height } = this.scale.gameSize;
+    const resolution = chooseArtResolution(computeCameraZoom(width, height));
+    this.registry.set(ART_RESOLUTION_KEY, resolution);
+    queueAssets(this.load, getAssetManifest(), resolution);
   }
 
   create(): void {
