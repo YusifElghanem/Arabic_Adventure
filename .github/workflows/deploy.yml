@@ -1,0 +1,81 @@
+name: Test & deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, claude/arabic-toddler-platformer-avmer4]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a deployment half-way; queue the next one instead.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      deployable: ${{ steps.entry.outputs.deployable }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # The game entry point (src/main.tsx) lands in Phase 4. Until then there
+      # is nothing to bundle, so the build and deploy steps are skipped rather
+      # than failing the workflow.
+      - name: Check for game entry point
+        id: entry
+        run: |
+          if [ -f src/main.tsx ]; then
+            echo "deployable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deployable=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::src/main.tsx not found yet - skipping build and deploy."
+          fi
+
+      - name: Configure Pages
+        id: pages
+        if: steps.entry.outputs.deployable == 'true' && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Build
+        if: steps.entry.outputs.deployable == 'true'
+        run: npm run build
+        env:
+          # Pages serves the site from /<repo-name>/, so asset URLs must include it.
+          VITE_BASE: ${{ steps.pages.outputs.base_path && format('{0}/', steps.pages.outputs.base_path) || '/' }}
+
+      - name: Upload site
+        if: steps.entry.outputs.deployable == 'true' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.deployable == 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
