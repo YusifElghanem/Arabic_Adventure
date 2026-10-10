@@ -41,6 +41,8 @@ export interface LevelGoals {
 /** Progress inside the level being played. Never persisted, so a reload starts the level fresh. */
 export interface LevelSession {
   levelId: number;
+  /** Increments on every (re)start so level content can remount from scratch. */
+  runId: number;
   starsCollected: number;
   totalStars: number;
   letterDotsCollected: number;
@@ -61,6 +63,8 @@ interface TransientState {
   screen: GameScreen;
   isPhotoModalOpen: boolean;
   session: LevelSession | null;
+  /** Number of level runs started this page load; feeds LevelSession.runId. */
+  runCounter: number;
   /** True once the persisted state has been read from storage. */
   hasHydrated: boolean;
 }
@@ -122,7 +126,7 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
 /** Stars awarded for a finished session, scaled to MAX_STARS_PER_LEVEL. */
-const computeAwardedStars = (session: LevelSession): number => {
+export const computeAwardedStars = (session: LevelSession): number => {
   if (session.totalStars <= 0) return MAX_STARS_PER_LEVEL;
   const ratio = session.starsCollected / session.totalStars;
   // Finishing a level always earns at least one star; preschoolers are never "failed".
@@ -138,7 +142,7 @@ const createInitialPersistedState = (): PersistedState => ({
   isMuted: false,
 });
 
-const createInitialTransientState = (): Omit<TransientState, 'hasHydrated'> => ({
+const createInitialTransientState = (): Omit<TransientState, 'hasHydrated' | 'runCounter'> => ({
   screen: 'title',
   isPhotoModalOpen: false,
   session: null,
@@ -195,6 +199,7 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       ...createInitialPersistedState(),
       ...createInitialTransientState(),
+      runCounter: 0,
       hasHydrated: false,
 
       /* ------------------------------- UI -------------------------------- */
@@ -250,17 +255,19 @@ export const useGameStore = create<GameState>()(
 
       startLevel: (levelId) => {
         if (!isValidLevelId(levelId) || !get().isLevelUnlocked(levelId)) return false;
-        set({
+        set((state) => ({
+          runCounter: state.runCounter + 1,
           screen: 'playing',
           isPhotoModalOpen: false,
           session: {
             levelId,
+            runId: state.runCounter + 1,
             starsCollected: 0,
             totalStars: 0,
             letterDotsCollected: 0,
             letterDotsRequired: 0,
           },
-        });
+        }));
         return true;
       },
 

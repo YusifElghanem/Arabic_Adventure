@@ -305,3 +305,18 @@ describe('persistence', () => {
     expect(s().hasHydrated).toBe(true);
   });
 });
+
+describe('run ids', () => {
+  it('gives every level start a new runId, including replays after exiting', async () => {
+    const { useGameStore } = await loadStore();
+    const s = useGameStore.getState;
+    s().startLevel(1);
+    const first = s().session!.runId;
+    s().startLevel(1);
+    const second = s().session!.runId;
+    s().exitLevel();
+    s().startLevel(1);
+    const third = s().session!.runId;
+    expect(new Set([first, second, third]).size).toBe(3);
+  });
+});
