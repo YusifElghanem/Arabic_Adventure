@@ -1,26 +1,22 @@
-/** Physics and feel tuning. Gentle values: the audience is 3–6 years old. */
+/** Engine-wide constants. World units are pixels at the design height. */
 
-export const GRAVITY = -22;
+/** Every screen sees this much world height; the visible width adapts to the screen. */
+export const DESIGN_HEIGHT = 720;
+/** Minimum visible world width, so tall phone screens still see what's ahead. */
+export const MIN_VISIBLE_WIDTH = 960;
+/** Cap on the device pixel ratio: sharp on retina, without burning low-end GPUs. */
+export const MAX_PIXEL_RATIO = 2;
 
-export const PLAYER_RADIUS = 0.35;
-/** Half the length of the capsule's straight section. Total height = 2 * (half + radius) = 1.4. */
-export const PLAYER_HALF_HEIGHT = 0.35;
-export const PLAYER_FOOT_OFFSET = PLAYER_HALF_HEIGHT + PLAYER_RADIUS;
+export const SKY_COLOR = '#8fd8ff';
 
-export const MOVE_SPEED = 5.2;
-export const GROUND_ACCEL = 40;
-export const AIR_ACCEL = 26;
-/** Jump apex = JUMP_SPEED² / (2·|GRAVITY|) ≈ 2.05 units. */
-export const JUMP_SPEED = 9.5;
-/** Seconds after leaving a ledge during which a jump still counts. */
-export const COYOTE_TIME = 0.2;
-/** Seconds a jump press is remembered before landing. */
-export const JUMP_BUFFER = 0.16;
-export const MAX_FALL_SPEED = 22;
+export const SceneKeys = {
+  Boot: 'Boot',
+  Preload: 'Preload',
+  Level: 'Level',
+} as const;
 
-/** Falling below this height triggers the friendly respawn. */
-export const KILL_Y = -9;
-export const RESPAWN_DURATION = 1.1;
-
-/** Identifies the player's rigid body in collision payloads. */
-export const PLAYER_KIND = 'player';
+/** Data passed to the level scene on (re)start. */
+export interface LevelSceneData {
+  levelId: number;
+  runId: number;
+}

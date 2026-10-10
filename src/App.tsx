@@ -10,8 +10,8 @@ import TouchControls from '@/components/ui/TouchControls';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useGameStore } from '@/stores/useGameStore';
 
-// The game scene pulls in the physics engine; load it only when a level starts.
-const GameScene = lazy(() => import('@/components/scene/GameScene'));
+// Phaser is large; download it only when a level starts.
+const PhaserGame = lazy(() => import('@/game/PhaserGame'));
 
 /**
  * Top-level layout: the title screen, or the game canvas with its HTML
@@ -60,10 +60,10 @@ export default function App() {
   return (
     <main className="relative h-full w-full overflow-hidden select-none">
       {inGame ? (
-        <ErrorBoundary onReset={exitLevel}>
+        <ErrorBoundary key="game" onReset={exitLevel}>
           <div className="absolute inset-0">
             <Suspense fallback={null}>
-              <GameScene onReady={onReady} />
+              <PhaserGame onReady={onReady} />
             </Suspense>
           </div>
           {!sceneReady && <LoadingScreen />}
@@ -77,7 +77,7 @@ export default function App() {
           {screen === 'levelComplete' && <LevelCompleteScreen />}
         </ErrorBoundary>
       ) : (
-        <ErrorBoundary>
+        <ErrorBoundary key="title">
           <TitleScreen />
         </ErrorBoundary>
       )}

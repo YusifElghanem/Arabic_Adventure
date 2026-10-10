@@ -1,6 +1,5 @@
 import { ARABIC_LETTERS, OUTFITS, useGameStore, type Outfit } from '@/stores/useGameStore';
 import { playSound, unlockAudio } from '@/utils/sound';
-import AvatarPreview from './AvatarPreview';
 import { ExplorerIcon, OnesieIcon, PlayIcon, SoundOffIcon, SoundOnIcon } from './icons';
 import ParentGateButton from './ParentGateButton';
 
@@ -61,7 +60,7 @@ export default function TitleScreen() {
         مغامرة الحروف
       </h1>
 
-      <AvatarPreview className="relative z-10 min-h-40 w-[min(90vw,340px)] flex-1 basis-0 max-h-[340px]" />
+      <AvatarBadge />
 
       <div dir="ltr" className="relative z-10 flex shrink-0 items-center gap-5" role="radiogroup" aria-label="اختر الملابس">
         {OUTFITS.map((option) => {
@@ -116,6 +115,29 @@ export default function TitleScreen() {
             </span>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The child's photo (or chosen outfit) in a big bouncing badge. Phase 3
+ * replaces it with the animated 2D character.
+ */
+function AvatarBadge() {
+  const outfit = useGameStore((s) => s.outfit);
+  const face = useGameStore((s) => s.faceTextureUrl);
+  const { Icon, ring } = OUTFIT_META[outfit];
+  return (
+    <div className="relative z-10 my-4 grid min-h-0 flex-1 place-items-center">
+      <div
+        className={`grid aspect-square h-[min(32vh,240px)] place-items-center rounded-full bg-white/90 shadow-2xl ring-8 ${ring} animate-[gentle-pulse_3s_ease-in-out_infinite]`}
+      >
+        {face ? (
+          <img src={face} alt="" className="h-[82%] w-[82%] rounded-full bg-amber-100 object-contain" />
+        ) : (
+          <Icon size="72%" />
+        )}
       </div>
     </div>
   );

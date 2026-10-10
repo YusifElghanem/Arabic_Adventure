@@ -21,14 +21,13 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    // The Rapier physics chunk embeds its WebAssembly (~2.2 MB, ~840 kB gzipped).
-    // It is lazy-loaded only when a level starts, so the title screen stays light.
-    chunkSizeWarningLimit: 2400,
+    // Phaser is ~1.5 MB minified (~340 kB gzipped). It sits in its own
+    // cacheable chunk and is lazy-loaded only when a level starts.
+    chunkSizeWarningLimit: 1600,
     rollupOptions: {
       output: {
-        // three.js is shared by the title preview and the game; give it its own cacheable chunk.
         manualChunks: {
-          three: ['three'],
+          phaser: ['phaser'],
         },
       },
     },

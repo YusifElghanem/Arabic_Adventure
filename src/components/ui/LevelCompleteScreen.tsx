@@ -1,4 +1,4 @@
-import { isLevelAvailable } from '@/components/levels/levelCatalog';
+import { isLevelAvailable } from '@/game/levels';
 import { MAX_STARS_PER_LEVEL, computeAwardedStars, useGameStore } from '@/stores/useGameStore';
 import { HomeIcon, NextIcon, ReplayIcon, StarIcon, SunIcon } from './icons';
 import { MenuButton } from './PauseMenu';
