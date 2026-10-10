@@ -21,14 +21,14 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    chunkSizeWarningLimit: 1500,
+    // The Rapier physics chunk embeds its WebAssembly (~2.2 MB, ~840 kB gzipped).
+    // It is lazy-loaded only when a level starts, so the title screen stays light.
+    chunkSizeWarningLimit: 2400,
     rollupOptions: {
       output: {
-        // Keep the heavy 3D engine code in separate cacheable chunks.
+        // three.js is shared by the title preview and the game; give it its own cacheable chunk.
         manualChunks: {
           three: ['three'],
-          r3f: ['@react-three/fiber', '@react-three/drei'],
-          physics: ['@react-three/rapier'],
         },
       },
     },

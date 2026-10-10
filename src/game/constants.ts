@@ -13,11 +13,9 @@ export const AIR_ACCEL = 26;
 /** Jump apex = JUMP_SPEED² / (2·|GRAVITY|) ≈ 2.05 units. */
 export const JUMP_SPEED = 9.5;
 /** Seconds after leaving a ledge during which a jump still counts. */
-export const COYOTE_TIME = 0.14;
+export const COYOTE_TIME = 0.2;
 /** Seconds a jump press is remembered before landing. */
 export const JUMP_BUFFER = 0.16;
-/** Upward speed multiplier applied when the jump button is released early. */
-export const JUMP_CUT = 0.55;
 export const MAX_FALL_SPEED = 22;
 
 /** Falling below this height triggers the friendly respawn. */

@@ -7,7 +7,6 @@ import {
   COYOTE_TIME,
   GROUND_ACCEL,
   JUMP_BUFFER,
-  JUMP_CUT,
   JUMP_SPEED,
   KILL_Y,
   MAX_FALL_SPEED,
@@ -42,8 +41,6 @@ interface ControllerState {
   lastGroundedAt: number;
   jumpBufferedAt: number;
   seenJumpPresses: number;
-  /** True between a jump and its apex, so releasing the button cuts the jump short. */
-  canCutJump: boolean;
   wasGrounded: boolean;
   respawn: { from: Vector3; elapsed: number } | null;
 }
@@ -59,7 +56,6 @@ export default function Player({ spawn }: PlayerProps) {
     lastGroundedAt: -Infinity,
     jumpBufferedAt: -Infinity,
     seenJumpPresses: useInputStore.getState().jumpPresses,
-    canCutJump: false,
     wasGrounded: false,
     respawn: null,
   });
@@ -111,7 +107,6 @@ export default function Player({ spawn }: PlayerProps) {
       rb.setTranslation(spawnVec, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
       ctrl.current.respawn = null;
-      ctrl.current.canCutJump = false;
       playerTracker.respawning = false;
       playerTracker.pendingLaunch = null;
     }
@@ -145,7 +140,8 @@ export default function Player({ spawn }: PlayerProps) {
       let vx = velocity.x + MathUtils.clamp(target - velocity.x, -accel, accel);
       if (Math.abs(vx) < 0.01) vx = 0;
 
-      // Vertical: buffered jump plus coyote time.
+      // Vertical: buffered jump plus coyote time. Every jump is a full jump:
+      // small children tap rather than hold, so there is no variable height.
       let vy = Math.max(velocity.y, -MAX_FALL_SPEED);
       if (input.jumpPresses !== c.seenJumpPresses) {
         c.seenJumpPresses = input.jumpPresses;
@@ -155,19 +151,13 @@ export default function Player({ spawn }: PlayerProps) {
         vy = JUMP_SPEED;
         c.jumpBufferedAt = -Infinity;
         c.lastGroundedAt = -Infinity;
-        c.canCutJump = true;
         playSound('jump');
-      } else if (c.canCutJump && !input.jumpHeld && vy > 0) {
-        vy *= JUMP_CUT;
-        c.canCutJump = false;
       }
-      if (vy <= 0) c.canCutJump = false;
 
       // Mechanics (e.g. the Letter B trampoline) can launch the player.
       if (playerTracker.pendingLaunch !== null) {
         vy = playerTracker.pendingLaunch;
         playerTracker.pendingLaunch = null;
-        c.canCutJump = false;
       }
 
       rb.setLinvel({ x: vx, y: vy, z: 0 }, true);

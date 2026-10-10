@@ -130,8 +130,8 @@ export default function MysteryBlock({ position, dotTarget }: MysteryBlockProps)
 
   return (
     <>
-      <RigidBody type="fixed" colliders={false} position={position} onCollisionEnter={onCollisionEnter}>
-        <CuboidCollider args={[SIZE / 2, SIZE / 2, SIZE / 2]} />
+      <RigidBody type="fixed" colliders={false} position={position}>
+        <CuboidCollider args={[SIZE / 2, SIZE / 2, SIZE / 2]} onCollisionEnter={onCollisionEnter} />
         <group ref={block}>
           <RoundedBox args={[SIZE, SIZE, SIZE]} radius={0.12} smoothness={4} castShadow receiveShadow>
             <meshStandardMaterial
