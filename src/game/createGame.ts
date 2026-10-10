@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { connectGameToStore, type LevelController } from './bridge';
-import { SKY_COLOR, SceneKeys, type LevelSceneData } from './constants';
+import { GRAVITY, SKY_COLOR, SceneKeys, type LevelSceneData } from './constants';
 import { computeCanvasSize } from './scaling';
 import BootScene from './scenes/BootScene';
 import LevelScene from './scenes/LevelScene';
@@ -36,9 +36,13 @@ export function createGame(parent: HTMLElement): { game: Phaser.Game; destroy: (
     },
     physics: {
       default: 'arcade',
-      arcade: { gravity: { x: 0, y: 0 }, debug: false },
+      arcade: { gravity: { x: 0, y: GRAVITY }, debug: false },
     },
-    fps: { target: 60, smoothStep: true },
+    // panicMax: Phaser clamps every frame to 1/60 s for its first `panicMax`
+    // frames (default 120). On a 30 fps tablet that is 4 seconds of slow
+    // motion at the start of every level; 20 frames still absorbs the heavy
+    // first frames without it.
+    fps: { target: 60, smoothStep: true, panicMax: 20 },
     // Keyboard and touch input come from the React layer (useInputStore),
     // shared with the on-screen buttons. Phaser's keyboard stays off.
     input: { keyboard: false, mouse: true, touch: true, gamepad: false },

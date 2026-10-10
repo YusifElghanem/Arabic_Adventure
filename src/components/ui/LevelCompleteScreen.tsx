@@ -1,5 +1,5 @@
 import { isLevelAvailable } from '@/game/levels';
-import { MAX_STARS_PER_LEVEL, computeAwardedStars, useGameStore } from '@/stores/useGameStore';
+import { ARABIC_LETTERS, MAX_STARS_PER_LEVEL, computeAwardedStars, useGameStore } from '@/stores/useGameStore';
 import { HomeIcon, NextIcon, ReplayIcon, StarIcon, SunIcon } from './icons';
 import { MenuButton } from './PauseMenu';
 
@@ -12,6 +12,8 @@ export default function LevelCompleteScreen() {
   const lettersDiscovered = useGameStore((s) => s.lettersDiscovered);
 
   if (!session) return null;
+  // Show letters in alphabet order, not the order they were found.
+  const letters = ARABIC_LETTERS.filter((letter) => lettersDiscovered.includes(letter));
   const awarded = computeAwardedStars(session);
   const nextLevel = session.levelId + 1;
   const hasNext = isLevelAvailable(nextLevel) && isLevelUnlocked(nextLevel);
@@ -33,9 +35,9 @@ export default function LevelCompleteScreen() {
           ))}
         </div>
 
-        {lettersDiscovered.length > 0 && (
+        {letters.length > 0 && (
           <div dir="rtl" className="flex gap-3" aria-label="الحروف">
-            {lettersDiscovered.map((letter) => (
+            {letters.map((letter) => (
               <span
                 key={letter}
                 className="grid size-16 place-items-center rounded-2xl bg-sky-100 font-display text-4xl font-bold text-sky-700 shadow-inner"

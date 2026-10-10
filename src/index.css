@@ -51,3 +51,21 @@ body,
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Title-screen avatar */
+@keyframes avatar-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.015, 0.985) translateY(1%); }
+}
+@keyframes avatar-wave {
+  0%, 100% { rotate: -150deg; }
+  50% { rotate: -110deg; }
+}
+@keyframes avatar-sway {
+  0%, 100% { rotate: 6deg; }
+  50% { rotate: -4deg; }
+}
+@keyframes avatar-nod {
+  0%, 100% { rotate: -3deg; }
+  50% { rotate: 3deg; }
+}

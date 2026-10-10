@@ -1,3 +1,5 @@
+import { CHARACTER_ART } from './character';
+import { MECHANIC_ART } from './mechanics';
 import { CLOUD_SEA_SIZE, CLOUDS, cloudSeaSvg, cloudSvg } from './clouds';
 import {
   BUTTERFLY_SIZE,
@@ -65,7 +67,7 @@ export const ArtKeys = {
 export type ArtKey = (typeof ArtKeys)[keyof typeof ArtKeys];
 
 export interface ArtPiece {
-  key: ArtKey;
+  key: string;
   /** Logical (world-pixel) size; textures are rasterised at this × resolution. */
   width: number;
   height: number;
@@ -107,4 +109,6 @@ export const ART: readonly ArtPiece[] = [
   { key: ArtKeys.sparkle, ...SPARKLE_SIZE, svg: sparkleSvg },
   { key: ArtKeys.butterflyPink, ...BUTTERFLY_SIZE, svg: () => butterflySvg(PALETTE.candyPink, PALETTE.candyYellow) },
   { key: ArtKeys.butterflyBlue, ...BUTTERFLY_SIZE, svg: () => butterflySvg(PALETTE.candyBlue, PALETTE.white) },
+  ...CHARACTER_ART,
+  ...MECHANIC_ART,
 ];

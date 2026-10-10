@@ -2,7 +2,7 @@
   "name": "arabic-adventure",
   "private": true,
   "version": "0.1.0",
-  "description": "A 2.5D/3D web platformer that helps preschoolers learn Arabic letters.",
+  "description": "A 2D cartoon web platformer that helps preschoolers learn Arabic letters.",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
