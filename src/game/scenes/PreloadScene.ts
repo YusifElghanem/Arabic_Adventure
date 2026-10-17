@@ -29,9 +29,20 @@ export default class PreloadScene extends Phaser.Scene {
 
   create(): void {
     EventBus.emit('preload-progress', 1);
-    const data = currentLevelData();
-    // The store always has a session when the game is mounted. If it has
-    // vanished (the child went home mid-load), there is nothing to start.
-    if (data) this.scene.start(SceneKeys.Level, data);
+    // Letters are drawn as canvas text: if drawn before the web font loads,
+    // the canvas caches the fallback font. Wait for it (briefly at most).
+    void waitForDisplayFont().then(() => {
+      const data = currentLevelData();
+      // The store always has a session when the game is mounted. If it has
+      // vanished (the child went home mid-load), there is nothing to start.
+      if (data) this.scene.start(SceneKeys.Level, data);
+    });
   }
+}
+
+function waitForDisplayFont(timeoutMs = 2500): Promise<void> {
+  if (typeof document === 'undefined' || !document.fonts?.load) return Promise.resolve();
+  const load = document.fonts.load('800 64px "Baloo Bhaijaan 2"', 'أبتثجحخ ٮ ٯ ڡ ں ى').then(() => undefined);
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
+  return Promise.race([load, timeout]).catch(() => undefined);
 }

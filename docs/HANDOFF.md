@@ -461,7 +461,7 @@ Zustand store with `persist` middleware, localStorage key
 **Exports:** `Outfit` ('onesie' | 'explorer'), `OUTFITS`, `GameScreen`,
 `ARABIC_LETTERS` (28 letters, in order:
 أ ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي), `ArabicLetter`,
-`LEVEL_COUNT` (**currently 5; Step 1 must raise it to 27**, see section 20),
+`LEVEL_COUNT` (**27** = `TOTAL_LEVELS`; a test keeps them in sync),
 `MAX_STARS_PER_LEVEL = 3`, `LevelRecord {completed, bestStars}`,
 `LevelGoals {totalStars, letterDotsRequired}`,
 `LevelSession {levelId, runId, starsCollected, totalStars, letterDotsCollected, letterDotsRequired}`,
@@ -830,9 +830,8 @@ layer-space x at the screen's left edge for a parallax factor.
 
 ### 10.8 Fonts
 - UI font: **"Baloo Bhaijaan 2"** (Arabic and Latin, rounded, child-friendly,
-  OFL). It is currently loaded from Google Fonts in `index.html`.
-  **Step 1 switches to the self-hosted `@fontsource/baloo-bhaijaan-2`**
-  (already installed) so it works offline and inside Phaser (section 20.6).
+  OFL), **self-hosted** via `@fontsource/baloo-bhaijaan-2` (imported in
+  `main.tsx`), so it works offline and inside Phaser text (section 20.6).
 - Tailwind token: `--font-display: "Baloo Bhaijaan 2", "Noto Sans Arabic", system-ui, sans-serif`
   (`font-display` class).
 
@@ -1284,7 +1283,7 @@ Vertical stack on a sky → mint gradient with drifting SVG clouds (CSS
    "ملابس المستكشف".
 5. The **Play** button (`aria-label="ابدأ اللعب"`): a 112–128 px green
    circle, white ring, 3D bottom shadow, gentle-pulse. It calls
-   `unlockAudio()` + tap + `startLevel(1)`. (**Step 2 changes this to open
+   `unlockAudio()` + tap + `startLevel(highest unlocked level)`. (**Step 2 changes this to open
    the world map**, section 21.1.)
 6. The letter shelf: the taught letters as tiles, lit (white + amber ring)
    when discovered.
@@ -1384,7 +1383,7 @@ validation).
 
 ## 18. Testing and acceptance checklists
 
-### 18.1 Unit tests (`npm test`, Vitest + jsdom): 151 tests in 8 files at the time of writing
+### 18.1 Unit tests (`npm test`, Vitest + jsdom): 260 tests in 9 files after Step 1
 | file | covers |
 |---|---|
 | stores/useGameStore.test.ts | UI state, outfits, photo validation and blob revoke, level flow, star rules, persistence, sanitising corrupt saves, quota fallback, reset, runIds |
@@ -1395,6 +1394,7 @@ validation).
 | game/art/art.test.ts | every ART piece is valid SVG at its declared size and deterministic; hill, cloud sea and platform seams (value and slope); clouds fit; base64 round-trip; resolution choice |
 | game/world/view.test.ts | fixedView, layerLeft, wrap |
 | game/player/controller.test.ts | acceleration, braking, single jump per press, coyote time, buffer, fall cap, stale presses |
+| game/levelGenerator.test.ts | letter table (28, alphabet order, emoji files exist, worlds, dots), LEVEL_COUNT sync, catalog (classic 1 + template 2..27), and for each of the 26 template levels: determinism, gap/step safety, block count/height/position, letter/friend/stars/goal placement |
 
 Rule: **pure logic must get unit tests** (generators, controllers, data
 validators). Phaser display code is verified with the browser play-tests.
@@ -1426,6 +1426,12 @@ failure.
   one canvas, fills the viewport, backing store = css × min(dpr, 2), Level
   status 5 (RUNNING), goals registered, pause → 6, resume → 5, replay →
   new runId, rotation re-fits, Home destroys the canvas, no console errors.
+- `template-level.cjs` (`LEVELS=2,4,5,27` by default): unlocks and starts each
+  sampled template level, checks the block count = required dots and that the
+  word picture loaded, screenshots the letter (before), bonks all blocks, waits
+  for the companions, teleports (`player.body.reset`) to the letter, waits for
+  the letter to be discovered, screenshots (after), teleports to the rainbow,
+  and checks the level completes and the next level unlocks.
 - `motion-and-pause.cjs`: flowers sway, sun rays turn, clouds drift; pause
   freezes all three; resume restores them; reduced motion → clouds still,
   sun still, no ambient sparkles; no console errors.
@@ -1517,13 +1523,39 @@ failure.
 
 ## 20. WORK IN PROGRESS: the template level system (Step 1), exact design
 
-> Status when this was written (2026-10-17):
-> - ✅ `src/game/letters.ts` written (the 28-letter table, helpers). Not yet
->   imported anywhere.
-> - ✅ `@fontsource/baloo-bhaijaan-2` installed (package.json). Not yet imported.
-> - ✅ 28 Fluent Emoji SVGs and their LICENSE downloaded into `public/emoji/`.
-> - ⬜ Everything below in 20.2–20.10 is still to do.
-> Check `git status` / `git log` to see whether a later session has advanced this.
+> **Status: ✅ DONE (2026-10-17).** Implemented as designed below, with these
+> as-built details (they override the design text where different):
+> - Files: `game/letters.ts`, `game/levelGenerator.ts` (+ `levelGenerator.test.ts`,
+>   which also tests the letter table and the catalog), `player/DotCompanions.ts`,
+>   `mechanics/LetterDisplay.ts`, `mechanics/WordFriend.ts`; `LevelScene` has
+>   `preload()` (word picture) and `buildClassicMechanics` / `buildTemplateMechanics`;
+>   `levels.ts` has `kind`, `world`, `template`, `letter`, and a cached
+>   `getLevelDefinition`; `LEVEL_COUNT = 27`; `CREDITS.md`;
+>   `scripts/e2e/template-level.cjs` (LEVELS env, default `2,4,5,27`).
+> - `DotCompanions.add(from)` takes the point where the dot appears (the
+>   child's head); `releaseTo(targets, onEach)` flies 650 ms with 200 ms
+>   stagger and a control point 140 px above.
+> - LetterDisplay: font size 300, padding 24, `resolution = r`, `rtl: true`;
+>   0-dot letters are drawn in **grey `#b9c1ce`** and switch to `spec.color`
+>   with `setColor` (a tint multiplies with the colour, so it can't grey a
+>   letter). Slots are computed from the glyph's **ink bounds** (scanning the
+>   text canvas alpha > 140, step 2 px): above → `inkTop − 28`; below →
+>   `inkBottom + 30`; inside → `inkTop + 0.7·h`; 0 dots → ink centre; x =
+>   centre, ±28 for 2 dots, and a third dot 44 px above for 3. Ghost dots are
+>   scale 0.85/r, **tinted with the letter colour** (white dashed rings were
+>   invisible on the sky). The sensor is 340×400 centred on the letter.
+>   Completion: ghosts and filled dots fade, the text becomes `spec.letter`
+>   with an elastic pop from 0.8, sparkles, `discoverLetter`, `playSound('win')`,
+>   then speech after 400 ms.
+> - WordFriend: loaded at `160·1.4·r` px, shown 160×160, sensor 240×260; it
+>   says the word, or `name… word` once the letter is complete.
+> - `DISPLAY_FONT` lives in `constants.ts`. `PreloadScene` waits for
+>   `document.fonts.load('800 64px "Baloo Bhaijaan 2"', …)` (max 2.5 s) before
+>   starting the level. The Google Fonts links were removed from `index.html`;
+>   `main.tsx` imports the Fontsource CSS (arabic and latin, weights 700 and 800).
+> - Title Play starts `max(unlockedLevels)` (filtered by `isLevelAvailable`).
+> - Verified: the dotless glyphs ٮ (ت ث) and ح render correctly in the font;
+>   the full letters replace them on completion.
 
 ### 20.1 Goals
 - **One template** turns a `LetterSpec` into a full, varied, completable
@@ -2158,6 +2190,12 @@ loadPhoto(file); detectFace(photo); renderFaceCrop(photo, region, {size?, feathe
 
 ## Appendix C. Recipes
 
+### C.0 Add or change a letter
+Edit its row in `src/game/letters.ts` (word, emoji file, dots, place, dotless,
+world, colour). Download the emoji if it is new (C.4). `npm test` checks the
+table and regenerates and validates its level. Run
+`LEVELS=<id> node scripts/e2e/template-level.cjs` to see it.
+
 ### C.1 Add a new mechanic (template)
 ```ts
 // src/game/mechanics/Thing.ts
@@ -2331,7 +2369,7 @@ Tips:
   that matter.
 
 ## Appendix H. Unit test inventory (generated from `vitest --reporter=verbose`)
-Every test that existed when this was written. Keep them all passing; add new ones for new pure logic.
+Every test that existed when this was last regenerated (after Step 1). Keep them all passing; add new ones for new pure logic.
 
 ```
 src/stores/useGameStore.test.ts > initial state > starts on the title screen with only level 1 unlocked
@@ -2357,34 +2395,115 @@ src/stores/useGameStore.test.ts > persistence > survives unparseable storage
 src/stores/useGameStore.test.ts > persistence > drops the face photo and still saves progress when the quota is exceeded
 src/stores/useGameStore.test.ts > persistence > resetProgress wipes everything back to defaults
 src/stores/useGameStore.test.ts > run ids > gives every level start a new runId, including replays after exiting
-src/utils/faceCropper.test.ts > isSkinPixel > accepts very light skin
-src/utils/faceCropper.test.ts > isSkinPixel > accepts light skin
-src/utils/faceCropper.test.ts > isSkinPixel > accepts medium skin
-src/utils/faceCropper.test.ts > isSkinPixel > accepts tan skin
-src/utils/faceCropper.test.ts > isSkinPixel > accepts brown skin
-src/utils/faceCropper.test.ts > isSkinPixel > accepts dark skin
-src/utils/faceCropper.test.ts > isSkinPixel > rejects white wall
-src/utils/faceCropper.test.ts > isSkinPixel > rejects black
-src/utils/faceCropper.test.ts > isSkinPixel > rejects sky blue
-src/utils/faceCropper.test.ts > isSkinPixel > rejects grass green
-src/utils/faceCropper.test.ts > isSkinPixel > rejects grey
-src/utils/faceCropper.test.ts > isSkinPixel > rejects purple
-src/utils/faceCropper.test.ts > findFaceBlob > returns null for an empty mask
-src/utils/faceCropper.test.ts > findFaceBlob > ignores specks smaller than the minimum share
-src/utils/faceCropper.test.ts > findFaceBlob > prefers the large central blob over a small corner blob
-src/utils/faceCropper.test.ts > findFaceBlob > rejects thin, sparse streaks such as furniture edges
-src/utils/faceCropper.test.ts > findFaceBlob > trims a face blob that runs down into the neck and body
-src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > finds a light-skinned face on a blue background
-src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > finds a dark-skinned face on a blue background
-src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > returns null when the photo has no skin
-src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > ignores transparent pixels
-src/utils/faceCropper.test.ts > regions > pads the face box into a taller-than-wide oval
-src/utils/faceCropper.test.ts > regions > keeps the oval ratio sane even for odd boxes
-src/utils/faceCropper.test.ts > regions > default region is centred in the upper part of the frame
-src/utils/faceCropper.test.ts > regions > clamps size and position to the image
-src/utils/faceCropper.test.ts > regions > scales about the centre
-src/utils/faceCropper.test.ts > loadPhoto validation > rejects non-image files
-src/utils/faceCropper.test.ts > loadPhoto validation > rejects files over the size limit
+src/game/levelGenerator.test.ts > letter table > has all 28 letters in alphabet order
+src/game/levelGenerator.test.ts > letter table > has a picture file for every letter
+src/game/levelGenerator.test.ts > letter table > uses valid worlds and dot counts
+src/game/levelGenerator.test.ts > letter table > keeps the store level count in sync
+src/game/levelGenerator.test.ts > level catalog > serves the classic level 1 and generated levels 2..27
+src/game/levelGenerator.test.ts > generated level for ت > is deterministic
+src/game/levelGenerator.test.ts > generated level for ت > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ت > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ت > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ث > is deterministic
+src/game/levelGenerator.test.ts > generated level for ث > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ث > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ث > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ج > is deterministic
+src/game/levelGenerator.test.ts > generated level for ج > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ج > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ج > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ح > is deterministic
+src/game/levelGenerator.test.ts > generated level for ح > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ح > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ح > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for خ > is deterministic
+src/game/levelGenerator.test.ts > generated level for خ > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for خ > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for خ > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for د > is deterministic
+src/game/levelGenerator.test.ts > generated level for د > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for د > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for د > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ذ > is deterministic
+src/game/levelGenerator.test.ts > generated level for ذ > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ذ > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ذ > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ر > is deterministic
+src/game/levelGenerator.test.ts > generated level for ر > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ر > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ر > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ز > is deterministic
+src/game/levelGenerator.test.ts > generated level for ز > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ز > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ز > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for س > is deterministic
+src/game/levelGenerator.test.ts > generated level for س > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for س > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for س > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ش > is deterministic
+src/game/levelGenerator.test.ts > generated level for ش > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ش > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ش > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ص > is deterministic
+src/game/levelGenerator.test.ts > generated level for ص > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ص > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ص > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ض > is deterministic
+src/game/levelGenerator.test.ts > generated level for ض > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ض > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ض > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ط > is deterministic
+src/game/levelGenerator.test.ts > generated level for ط > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ط > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ط > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ظ > is deterministic
+src/game/levelGenerator.test.ts > generated level for ظ > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ظ > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ظ > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ع > is deterministic
+src/game/levelGenerator.test.ts > generated level for ع > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ع > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ع > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for غ > is deterministic
+src/game/levelGenerator.test.ts > generated level for غ > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for غ > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for غ > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ف > is deterministic
+src/game/levelGenerator.test.ts > generated level for ف > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ف > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ف > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ق > is deterministic
+src/game/levelGenerator.test.ts > generated level for ق > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ق > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ق > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ك > is deterministic
+src/game/levelGenerator.test.ts > generated level for ك > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ك > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ك > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ل > is deterministic
+src/game/levelGenerator.test.ts > generated level for ل > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ل > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ل > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for م > is deterministic
+src/game/levelGenerator.test.ts > generated level for م > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for م > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for م > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ن > is deterministic
+src/game/levelGenerator.test.ts > generated level for ن > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ن > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ن > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ه > is deterministic
+src/game/levelGenerator.test.ts > generated level for ه > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ه > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ه > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for و > is deterministic
+src/game/levelGenerator.test.ts > generated level for و > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for و > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for و > places the letter, friend, stars and goal on their platforms
+src/game/levelGenerator.test.ts > generated level for ي > is deterministic
+src/game/levelGenerator.test.ts > generated level for ي > keeps every gap and step toddler-safe
+src/game/levelGenerator.test.ts > generated level for ي > has one reachable block per needed dot
+src/game/levelGenerator.test.ts > generated level for ي > places the letter, friend, stars and goal on their platforms
 src/game/art/art.test.ts > art manifest > has unique keys
 src/game/art/art.test.ts > art manifest > sky is valid SVG at its declared size
 src/game/art/art.test.ts > art manifest > sun-rays is valid SVG at its declared size
@@ -2455,6 +2574,46 @@ src/game/art/art.test.ts > clouds > cloudHappy fits every puff (and its shade) i
 src/game/art/art.test.ts > clouds > fitCloud normalises any puff layout
 src/game/art/art.test.ts > encoding and resolution > toDataUri produces base64 that decodes back to the original, including non-ASCII
 src/game/art/art.test.ts > encoding and resolution > uses 2x art only when the camera zooms in noticeably
+src/utils/faceCropper.test.ts > isSkinPixel > accepts very light skin
+src/utils/faceCropper.test.ts > isSkinPixel > accepts light skin
+src/utils/faceCropper.test.ts > isSkinPixel > accepts medium skin
+src/utils/faceCropper.test.ts > isSkinPixel > accepts tan skin
+src/utils/faceCropper.test.ts > isSkinPixel > accepts brown skin
+src/utils/faceCropper.test.ts > isSkinPixel > accepts dark skin
+src/utils/faceCropper.test.ts > isSkinPixel > rejects white wall
+src/utils/faceCropper.test.ts > isSkinPixel > rejects black
+src/utils/faceCropper.test.ts > isSkinPixel > rejects sky blue
+src/utils/faceCropper.test.ts > isSkinPixel > rejects grass green
+src/utils/faceCropper.test.ts > isSkinPixel > rejects grey
+src/utils/faceCropper.test.ts > isSkinPixel > rejects purple
+src/utils/faceCropper.test.ts > findFaceBlob > returns null for an empty mask
+src/utils/faceCropper.test.ts > findFaceBlob > ignores specks smaller than the minimum share
+src/utils/faceCropper.test.ts > findFaceBlob > prefers the large central blob over a small corner blob
+src/utils/faceCropper.test.ts > findFaceBlob > rejects thin, sparse streaks such as furniture edges
+src/utils/faceCropper.test.ts > findFaceBlob > trims a face blob that runs down into the neck and body
+src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > finds a light-skinned face on a blue background
+src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > finds a dark-skinned face on a blue background
+src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > returns null when the photo has no skin
+src/utils/faceCropper.test.ts > detectFaceBoxFromPixels > ignores transparent pixels
+src/utils/faceCropper.test.ts > regions > pads the face box into a taller-than-wide oval
+src/utils/faceCropper.test.ts > regions > keeps the oval ratio sane even for odd boxes
+src/utils/faceCropper.test.ts > regions > default region is centred in the upper part of the frame
+src/utils/faceCropper.test.ts > regions > clamps size and position to the image
+src/utils/faceCropper.test.ts > regions > scales about the centre
+src/utils/faceCropper.test.ts > loadPhoto validation > rejects non-image files
+src/utils/faceCropper.test.ts > loadPhoto validation > rejects files over the size limit
+src/game/bridge.test.ts > connectGameToStore > pauses and resumes the level with the screen state
+src/game/bridge.test.ts > connectGameToStore > restarts the level scene when a new run begins
+src/game/bridge.test.ts > connectGameToStore > leaves starting to the preloader while the level scene has not started yet
+src/game/bridge.test.ts > connectGameToStore > ignores unrelated store changes and stops listening after disconnect
+src/game/bridge.test.ts > connectGameToStore > currentLevelData reflects the active session
+src/game/bridge.test.ts > level catalog > defines a playable level 1 with valid goals and size
+src/game/scaling.test.ts > computeCanvasSize > scales CSS pixels by the device pixel ratio
+src/game/scaling.test.ts > computeCanvasSize > caps very high pixel ratios
+src/game/scaling.test.ts > computeCanvasSize > treats missing or sub-1 ratios as 1 and never returns zero size
+src/game/scaling.test.ts > computeCameraZoom > fits the design height on landscape screens
+src/game/scaling.test.ts > computeCameraZoom > zooms out on portrait phones to keep enough width visible
+src/game/scaling.test.ts > computeCameraZoom > is safe for zero-sized canvases
 src/game/player/controller.test.ts > stepController > accelerates smoothly up to the move speed
 src/game/player/controller.test.ts > stepController > brakes to a stop without input
 src/game/player/controller.test.ts > stepController > jumps on a fresh press while grounded, and only once per press
@@ -2464,23 +2623,11 @@ src/game/player/controller.test.ts > stepController > remembers a press made jus
 src/game/player/controller.test.ts > stepController > forgets a press made long before landing
 src/game/player/controller.test.ts > stepController > caps the fall speed
 src/game/player/controller.test.ts > stepController > ignores presses that happened before the controller was created
-src/game/bridge.test.ts > connectGameToStore > pauses and resumes the level with the screen state
-src/game/bridge.test.ts > connectGameToStore > restarts the level scene when a new run begins
-src/game/bridge.test.ts > connectGameToStore > leaves starting to the preloader while the level scene has not started yet
-src/game/bridge.test.ts > connectGameToStore > ignores unrelated store changes and stops listening after disconnect
-src/game/bridge.test.ts > connectGameToStore > currentLevelData reflects the active session
-src/game/bridge.test.ts > level catalog > defines a playable level 1 with valid goals and size
 src/game/EventBus.test.ts > TypedEventBus > delivers arguments to every listener
 src/game/EventBus.test.ts > TypedEventBus > unsubscribes via the returned function and via off()
 src/game/EventBus.test.ts > TypedEventBus > once() fires a single time
 src/game/EventBus.test.ts > TypedEventBus > keeps notifying other listeners when one throws
 src/game/EventBus.test.ts > TypedEventBus > lets a listener unsubscribe itself during emit
-src/game/scaling.test.ts > computeCanvasSize > scales CSS pixels by the device pixel ratio
-src/game/scaling.test.ts > computeCanvasSize > caps very high pixel ratios
-src/game/scaling.test.ts > computeCanvasSize > treats missing or sub-1 ratios as 1 and never returns zero size
-src/game/scaling.test.ts > computeCameraZoom > fits the design height on landscape screens
-src/game/scaling.test.ts > computeCameraZoom > zooms out on portrait phones to keep enough width visible
-src/game/scaling.test.ts > computeCameraZoom > is safe for zero-sized canvases
 src/game/world/view.test.ts > fixedView > is the whole canvas at zoom 1
 src/game/world/view.test.ts > fixedView > grows around the centre when zoomed out and shrinks when zoomed in
 src/game/world/view.test.ts > layerLeft > scrolls slower for distant layers
@@ -2490,7 +2637,7 @@ src/game/world/view.test.ts > wrap > wraps positive and negative values into ran
 ## Appendix I. Source tree with line counts (generated)
 ```
 81 .github/workflows/deploy.yml
-17 index.html
+14 index.html
 37 package.json
 23 scripts/e2e/README.md
 8 scripts/e2e/config.cjs
@@ -2510,7 +2657,7 @@ src/game/world/view.test.ts > wrap > wraps positive and negative values into ran
 80 src/components/ui/ParentGateButton.tsx
 43 src/components/ui/PauseMenu.tsx
 439 src/components/ui/PhotoUploadModal.tsx
-149 src/components/ui/TitleScreen.tsx
+153 src/components/ui/TitleScreen.tsx
 111 src/components/ui/TouchControls.tsx
 240 src/components/ui/icons.tsx
 62 src/game/EventBus.test.ts
@@ -2529,11 +2676,12 @@ src/game/world/view.test.ts > wrap > wraps positive and negative values into ran
 67 src/game/art/sun.ts
 95 src/game/art/svg.ts
 52 src/game/assets.ts
-92 src/game/bridge.test.ts
+93 src/game/bridge.test.ts
 58 src/game/bridge.ts
-40 src/game/constants.ts
+43 src/game/constants.ts
 91 src/game/createGame.ts
-86 src/game/levels.ts
+86 src/game/letters.ts
+123 src/game/levels.ts
 87 src/game/mechanics/FloatingLetterA.ts
 101 src/game/mechanics/GoalGate.ts
 123 src/game/mechanics/LetterB.ts
@@ -2546,8 +2694,8 @@ src/game/world/view.test.ts > wrap > wraps positive and negative values into ran
 35 src/game/scaling.test.ts
 34 src/game/scaling.ts
 18 src/game/scenes/BootScene.ts
-148 src/game/scenes/LevelScene.ts
-37 src/game/scenes/PreloadScene.ts
+209 src/game/scenes/LevelScene.ts
+48 src/game/scenes/PreloadScene.ts
 107 src/game/world/Ambient.ts
 118 src/game/world/Decorations.ts
 206 src/game/world/ParallaxBackground.ts
@@ -2557,7 +2705,7 @@ src/game/world/view.test.ts > wrap > wraps positive and negative values into ran
 30 src/game/world/view.ts
 50 src/hooks/useKeyboardControls.ts
 71 src/index.css
-27 src/main.tsx
+32 src/main.tsx
 322 src/stores/useGameStore.test.ts
 429 src/stores/useGameStore.ts
 36 src/stores/useInputStore.ts
@@ -2566,14 +2714,14 @@ src/game/world/view.test.ts > wrap > wraps positive and negative values into ran
 13 src/utils/random.ts
 126 src/utils/sound.ts
 52 src/utils/speech.ts
-7789 total
+7994 total
 32 tsconfig.app.json
 7 tsconfig.json
 22 tsconfig.node.json
 39 vite.config.ts
 ```
 
-## Appendix J. Step 1 task breakdown (do in this order; commit after each group)
+## Appendix J. Step 1 task breakdown (✅ completed 2026-10-17; kept as a model for later steps)
 1. **Data and generator** (pure, no Phaser):
    a. Finish `letters.ts` (done), add `letters.test.ts` (28 entries, order
       equals `ARABIC_LETTERS`, emoji files exist, `requiredDots`).

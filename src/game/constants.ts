@@ -9,6 +9,9 @@ export const MAX_PIXEL_RATIO = 2;
 
 export const SKY_COLOR = '#8fd8ff';
 
+/** The display font for letters drawn as Phaser text (self-hosted, see main.tsx). */
+export const DISPLAY_FONT = '"Baloo Bhaijaan 2", "Noto Sans Arabic", sans-serif';
+
 export const SceneKeys = {
   Boot: 'Boot',
   Preload: 'Preload',

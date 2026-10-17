@@ -1,6 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+// The display font, self-hosted (works offline; Phaser text needs it loaded).
+import '@fontsource/baloo-bhaijaan-2/arabic-700.css';
+import '@fontsource/baloo-bhaijaan-2/arabic-800.css';
+import '@fontsource/baloo-bhaijaan-2/700.css';
+import '@fontsource/baloo-bhaijaan-2/800.css';
 import './index.css';
 
 if (import.meta.env.DEV) {

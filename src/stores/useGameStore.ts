@@ -21,7 +21,7 @@ export const ARABIC_LETTERS = [
 export type ArabicLetter = (typeof ARABIC_LETTERS)[number];
 
 /** Total number of levels shipped with the game. */
-export const LEVEL_COUNT = 5;
+export const LEVEL_COUNT = 27;
 
 /** Maximum stars a single level can award (used for the HUD and best scores). */
 export const MAX_STARS_PER_LEVEL = 3;

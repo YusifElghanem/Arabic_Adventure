@@ -83,7 +83,8 @@ describe('connectGameToStore', () => {
 describe('level catalog', () => {
   it('defines a playable level 1 with valid goals and size', () => {
     expect(isLevelAvailable(1)).toBe(true);
-    expect(isLevelAvailable(2)).toBe(false);
+    expect(isLevelAvailable(2)).toBe(true);
+    expect(isLevelAvailable(28)).toBe(false);
     const level = getLevelDefinition(1)!;
     expect(level.width).toBeGreaterThan(0);
     expect(level.goals.letterDotsRequired).toBeGreaterThan(0);

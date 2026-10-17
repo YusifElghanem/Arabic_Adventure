@@ -3,6 +3,9 @@ import { useGameStore } from '@/stores/useGameStore';
 import { EventBus } from '../EventBus';
 import { ART_RESOLUTION_KEY } from '../assets';
 import { SKY_COLOR, SceneKeys, type LevelSceneData } from '../constants';
+import DotCompanions from '../player/DotCompanions';
+import LetterDisplay from '../mechanics/LetterDisplay';
+import WordFriend, { FRIEND_SIZE, friendTextureKey } from '../mechanics/WordFriend';
 import { getLevelDefinition, type LevelDefinition } from '../levels';
 import FloatingLetterA from '../mechanics/FloatingLetterA';
 import GoalGate from '../mechanics/GoalGate';
@@ -34,8 +37,14 @@ export default class LevelScene extends Phaser.Scene {
   private platforms: Platform[] = [];
   /** Exposed for debugging and automated play-tests. */
   player!: Player;
-  letterB!: LetterB;
-  mysteryBlock!: MysteryBlock;
+  /** Classic level only. */
+  letterB?: LetterB;
+  mysteryBlock?: MysteryBlock;
+  /** Template levels only. */
+  blocks: MysteryBlock[] = [];
+  letterDisplay?: LetterDisplay;
+  friend?: WordFriend;
+  companions?: DotCompanions;
   private lookAhead = 0;
 
   constructor() {
@@ -49,10 +58,27 @@ export default class LevelScene extends Phaser.Scene {
     this.runId = data.runId;
     this.platforms = [];
     this.lookAhead = 0;
+    this.blocks = [];
+    this.letterB = undefined;
+    this.mysteryBlock = undefined;
+    this.letterDisplay = undefined;
+    this.friend = undefined;
+    this.companions = undefined;
+  }
+
+  /** Template levels load their word picture here (only the one this level needs). */
+  preload(): void {
+    const spec = this.level.letter;
+    if (!spec) return;
+    const key = friendTextureKey(spec);
+    if (this.textures.exists(key)) return;
+    const r = (this.registry.get(ART_RESOLUTION_KEY) as number | undefined) ?? 1;
+    const size = Math.round(FRIEND_SIZE * 1.4 * r);
+    this.load.svg(key, `${import.meta.env.BASE_URL}emoji/${spec.emoji}.svg`, { width: size, height: size });
   }
 
   create(): void {
-    const { width, height, goals, mechanics } = this.level;
+    const { width, height, goals } = this.level;
     const resolution = (this.registry.get(ART_RESOLUTION_KEY) as number | undefined) ?? 1;
     const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
@@ -79,28 +105,17 @@ export default class LevelScene extends Phaser.Scene {
     const homes = this.platforms.filter((_, i) => i % 2 === 1).map((p) => ({ x: p.spec.x + p.width / 2, y: p.spec.y - 230 }));
     this.ambient = new Ambient(this, resolution, homes, reducedMotion, this.level.decorSeed);
 
-    // Mechanics.
-    this.letterB = new LetterB(this, mechanics.letterB.x, mechanics.letterB.groundY, resolution);
-    this.mysteryBlock = new MysteryBlock(
-      this,
-      mechanics.mysteryBlock.x,
-      mechanics.mysteryBlock.y,
-      resolution,
-      () => this.letterB.dotPosition,
-      () => useGameStore.getState().collectLetterDot(),
-    );
-    const letterA = new FloatingLetterA(this, mechanics.letterA.x, mechanics.letterA.groundY, mechanics.letterA.lionX, resolution);
-    const stars = mechanics.stars.map((s) => new Star(this, s.x, s.y, resolution));
-    const goal = new GoalGate(this, mechanics.goal.x, mechanics.goal.groundY, resolution);
-
-    // The player, and everything it touches.
+    // The player first: mechanics aim at it.
     this.player = new Player(this, { spawn: this.level.spawn, killY: this.level.cloudSeaY + 150, resolution });
-    const playerBody = this.player.body;
     this.physics.add.collider(this.player.zone, this.platforms.map((p) => p.body));
-    this.physics.add.collider(this.player.zone, this.mysteryBlock.zone, () => this.mysteryBlock.handleCollision(playerBody));
-    this.physics.add.collider(this.player.zone, this.letterB.zone, () => this.letterB.handleCollision(playerBody, (v) => this.player.launch(v)));
-    this.physics.add.overlap(this.player.zone, letterA.sensor, () => letterA.greet());
+
+    if (this.level.kind === 'classic') this.buildClassicMechanics(resolution);
+    else this.buildTemplateMechanics(resolution);
+
+    const stars = (this.level.mechanics?.stars ?? this.level.template?.stars ?? []).map((s) => new Star(this, s.x, s.y, resolution));
     for (const star of stars) this.physics.add.overlap(this.player.zone, star.zone, () => star.collect());
+    const goalSpec = this.level.mechanics?.goal ?? this.level.template!.goal;
+    const goal = new GoalGate(this, goalSpec.x, goalSpec.groundY, resolution);
     this.physics.add.overlap(this.player.zone, goal.sensor, () => goal.enter());
 
     const camera = this.cameras.main;
@@ -111,7 +126,7 @@ export default class LevelScene extends Phaser.Scene {
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyZoom, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.applyZoom, this);
-      this.letterB.destroy();
+      this.letterB?.destroy();
     });
 
     // Emit after the first frame renders, so React hides the loader only once there's a picture.
@@ -120,6 +135,7 @@ export default class LevelScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     this.player.update(time, delta);
+    this.companions?.update(delta, this.player.feet);
 
     // Look ahead in the direction of travel (smoothed), so the child sees what's coming.
     const dt = Math.min(delta, 50) / 1000;
@@ -129,6 +145,51 @@ export default class LevelScene extends Phaser.Scene {
 
     this.background.update(delta);
     this.ambient.update(delta);
+  }
+
+  /** Level 1: the ب trampoline, its Mystery Block, and the giant أ with the lion. */
+  private buildClassicMechanics(resolution: number): void {
+    const mechanics = this.level.mechanics!;
+    const playerBody = this.player.body;
+    const letterB = new LetterB(this, mechanics.letterB.x, mechanics.letterB.groundY, resolution);
+    const block = new MysteryBlock(
+      this,
+      mechanics.mysteryBlock.x,
+      mechanics.mysteryBlock.y,
+      resolution,
+      () => letterB.dotPosition,
+      () => useGameStore.getState().collectLetterDot(),
+    );
+    const letterA = new FloatingLetterA(this, mechanics.letterA.x, mechanics.letterA.groundY, mechanics.letterA.lionX, resolution);
+    this.physics.add.collider(this.player.zone, block.zone, () => block.handleCollision(playerBody));
+    this.physics.add.collider(this.player.zone, letterB.zone, () => letterB.handleCollision(playerBody, (v) => this.player.launch(v)));
+    this.physics.add.overlap(this.player.zone, letterA.sensor, () => letterA.greet());
+    this.letterB = letterB;
+    this.mysteryBlock = block;
+  }
+
+  /**
+   * Generated letter levels: each Mystery Block's dot flies to the child and
+   * orbits them; at the big letter, the dots fly into its slots.
+   */
+  private buildTemplateMechanics(resolution: number): void {
+    const template = this.level.template!;
+    const spec = this.level.letter!;
+    const playerBody = this.player.body;
+    const companions = new DotCompanions(this, resolution);
+    const head = () => ({ x: this.player.feet.x, y: this.player.feet.y - 150 });
+    this.blocks = template.blocks.map((b) => {
+      const block = new MysteryBlock(this, b.x, b.y, resolution, head, () => companions.add(head()));
+      this.physics.add.collider(this.player.zone, block.zone, () => block.handleCollision(playerBody));
+      return block;
+    });
+    this.letterDisplay = new LetterDisplay(this, spec, template.letter.x, template.letter.groundY, resolution);
+    const display = this.letterDisplay;
+    this.physics.add.overlap(this.player.zone, display.sensor, () => display.receive(companions));
+    this.friend = new WordFriend(this, spec, template.friend.x, template.friend.groundY);
+    const friend = this.friend;
+    this.physics.add.overlap(this.player.zone, friend.sensor, () => friend.greet());
+    this.companions = companions;
   }
 
   /**

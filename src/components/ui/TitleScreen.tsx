@@ -1,4 +1,5 @@
 import { ARABIC_LETTERS, OUTFITS, useGameStore, type Outfit } from '@/stores/useGameStore';
+import { isLevelAvailable } from '@/game/levels';
 import { playSound, unlockAudio } from '@/utils/sound';
 import { ExplorerIcon, OnesieIcon, PlayIcon, SoundOffIcon, SoundOnIcon } from './icons';
 import AvatarPreview from './AvatarPreview';
@@ -30,7 +31,10 @@ export default function TitleScreen() {
   const play = () => {
     unlockAudio();
     playSound('tap');
-    startLevel(1);
+    // Continue where the child left off: the highest unlocked level.
+    const { unlockedLevels } = useGameStore.getState();
+    const next = Math.max(1, ...unlockedLevels.filter(isLevelAvailable));
+    startLevel(next);
   };
 
   return (

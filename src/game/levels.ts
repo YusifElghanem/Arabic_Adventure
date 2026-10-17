@@ -1,4 +1,6 @@
 import type { LevelGoals } from '@/stores/useGameStore';
+import { generateTemplateLevel } from './levelGenerator';
+import { TOTAL_LEVELS, letterForLevel, type LetterSpec } from './letters';
 
 /**
  * Catalog of the levels in this build: geometry and goals only, with no
@@ -29,8 +31,26 @@ export interface LevelMechanics {
   goal: { x: number; groundY: number };
 }
 
+/** Mechanic positions in a generated (template) level. */
+export interface TemplateMechanics {
+  stars: readonly { x: number; y: number }[];
+  /** Mystery Block centres, one per dot the letter needs. */
+  blocks: readonly { x: number; y: number }[];
+  /** Where the big letter stands (centre x, on the surface groundY). */
+  letter: { x: number; groundY: number };
+  /** Where the word picture stands. */
+  friend: { x: number; groundY: number };
+  goal: { x: number; groundY: number };
+}
+
+/** 'classic' = hand-made Level 1 (أ and ب); 'template' = generated from a letter. */
+export type LevelKind = 'classic' | 'template';
+
 export interface LevelDefinition {
   id: number;
+  kind: LevelKind;
+  /** Which of the 7 worlds (1-based). */
+  world: number;
   /** World size in pixels. */
   width: number;
   height: number;
@@ -41,7 +61,12 @@ export interface LevelDefinition {
   /** World y where the cloud sea starts; falling below it means falling off the world. */
   cloudSeaY: number;
   platforms: readonly PlatformSpec[];
-  mechanics: LevelMechanics;
+  /** Classic level only. */
+  mechanics?: LevelMechanics;
+  /** Template levels only. */
+  template?: TemplateMechanics;
+  /** Template levels only: the letter this level teaches. */
+  letter?: LetterSpec;
   goals: LevelGoals;
   /** Seed for decoration scattering, so a level always looks the same. */
   decorSeed: number;
@@ -50,6 +75,8 @@ export interface LevelDefinition {
 export const LEVEL_DEFINITIONS: Record<number, LevelDefinition> = {
   1: {
     id: 1,
+    kind: 'classic',
+    world: 1,
     width: 5120,
     height: 1440,
     spawn: { x: 180, y: 1100 },
@@ -81,6 +108,16 @@ export const LEVEL_DEFINITIONS: Record<number, LevelDefinition> = {
   },
 };
 
-export const isLevelAvailable = (levelId: number): boolean => levelId in LEVEL_DEFINITIONS;
+/** Level 1 is hand-made; levels 2..TOTAL_LEVELS are generated from the letter table. */
+export const isLevelAvailable = (levelId: number): boolean =>
+  Number.isInteger(levelId) && levelId >= 1 && levelId <= TOTAL_LEVELS;
 
-export const getLevelDefinition = (levelId: number): LevelDefinition | undefined => LEVEL_DEFINITIONS[levelId];
+export function getLevelDefinition(levelId: number): LevelDefinition | undefined {
+  if (!isLevelAvailable(levelId)) return undefined;
+  const cached = LEVEL_DEFINITIONS[levelId];
+  if (cached) return cached;
+  const spec = letterForLevel(levelId);
+  if (!spec) return undefined;
+  // Generated once, then cached: generation is deterministic.
+  return (LEVEL_DEFINITIONS[levelId] = generateTemplateLevel(spec, levelId));
+}
