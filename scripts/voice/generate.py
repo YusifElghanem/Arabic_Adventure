@@ -22,8 +22,8 @@ import edge_tts
 # Egyptian, warm female voice. Alternatives: ar-EG-ShakirNeural (male),
 # ar-SA-ZariyahNeural (Saudi, female).
 VOICE = sys.argv[1] if len(sys.argv) > 1 else 'ar-EG-SalmaNeural'
-# A touch brighter and livelier for small children; not slowed down.
-RATE, PITCH = '+0%', '+12Hz'
+# Slower and a touch brighter for small children (owner: +0% was too fast).
+RATE, PITCH = '-25%', '+12Hz'
 
 # (letter name, word): same order as LETTERS. Diacritics only where the
 # voice could misread the word.

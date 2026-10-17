@@ -1268,7 +1268,7 @@ recipe of the same kind.
   LETTERS index (0..27); `cheer-0..5.mp3` (واو! ياي! برافو! شاطر! هايل! جميل!);
   `well-done.mp3` ("أحسنت!"); plus `manifest.json` `{voice, clips[]}`.
 - **Voice: Microsoft neural `ar-EG-SalmaNeural`** (Egyptian female) via
-  `edge-tts` 7.3.1, rate +0%, pitch +12Hz, silence trimmed with ffmpeg, mono
+  `edge-tts` 7.3.1, rate −25% (owner: +0% was too fast), pitch +12Hz, silence trimmed with ffmpeg, mono
   48 kbps. The owner chose Microsoft after hearing the alternatives.
 - **History (don't repeat):** an offline Piper voice (`ar_JO-kareem`) was
   tried first, since Microsoft's endpoint and Hugging Face are blocked from
@@ -1286,7 +1286,7 @@ recipe of the same kind.
   fetched, then decoded with `decodeAudioData` on the shared Web Audio
   context (`sound.ts#getAudioOutput`, so iOS plays them after the first tap)
   and cached. `say(clips, fallback)` plays clips back to back, `CLIP_GAP`
-  0.2 s, gain 1.8. A new phrase stops the previous one, and a slow load
+  0.45 s, gain 1.8. A new phrase stops the previous one, and a slow load
   never plays over a newer phrase (`phraseId`). If any clip is missing (or
   there is no manifest), it calls `speakArabic(fallback)`. Respects mute.
 - Helpers: `sayLetter`, `sayWord`, `sayLetterAndWord`, `celebrateLetter`

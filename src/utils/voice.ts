@@ -27,7 +27,7 @@ export function randomCheer(): VoiceClip {
 }
 
 /** Pause between clips in a phrase ("باء… بطة"), in seconds. */
-export const CLIP_GAP = 0.2;
+export const CLIP_GAP = 0.45;
 
 export const clipUrl = (clip: VoiceClip): string => `${import.meta.env.BASE_URL}audio/${clip}.mp3`;
 
