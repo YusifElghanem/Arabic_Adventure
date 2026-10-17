@@ -1277,11 +1277,19 @@ recipe of the same kind.
   pausal: ta marbuta is dropped so the word ends on its fatha (a final ة/ه
   is read /t/ or /h/), and shadda goes *before* its vowel (otherwise espeak
   drops the vowel). Check pronunciation by printing `voice.phonemize(text)`.
-  `use_tashkeel = False` (our diacritics win). `length_scale` 1.2 (slower).
+  `use_tashkeel = False` (our diacritics win).
+- **Style (owner feedback 2026-10-17: the raw deep male voice, slowed down,
+  was "slow, boring and a bit scary" for kids).** `STYLES` in the script;
+  default `cartoon`: `length_scale` 0.92 (a bit quicker), pitch +5 semitones
+  with *shifted* formants (rubberband: a smaller, friendlier voice), treble
+  +3 dB at 3 kHz, `loudnorm` I −16 / TP −1.5. Also `gentle` (+3 st,
+  formants preserved, normal speed) and `chipmunk` (+7 st, 0.88).
+  "أحسنت!" carries "!" for a livelier intonation. Never go back to a slow,
+  low voice.
 - Playback: fetch → `decodeAudioData` on the shared Web Audio context
   (`sound.ts#getAudioOutput`, so iOS plays it after the first tap), cached
   per clip (failures are forgotten so they retry). `say(clips, fallback)`
-  plays clips back to back with `CLIP_GAP` 0.35 s, at gain 1.8 into the
+  plays clips back to back with `CLIP_GAP` 0.25 s, at gain 1.8 into the
   master gain; a new phrase stops the previous one; a slow load never plays
   over a newer phrase (`phraseId`). Any clip missing → `speakArabic(fallback)`.
   Respects mute.

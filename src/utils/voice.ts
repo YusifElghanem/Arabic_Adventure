@@ -14,7 +14,7 @@ import { speakArabic } from './speech';
 export type VoiceClip = `letter-${number}` | `word-${number}` | 'well-done';
 
 /** Pause between clips in a phrase ("باء… بطة"), in seconds. */
-export const CLIP_GAP = 0.35;
+export const CLIP_GAP = 0.25;
 
 export const clipUrl = (clip: VoiceClip): string => `${import.meta.env.BASE_URL}audio/${clip}.mp3`;
 

@@ -9,7 +9,7 @@ WITH diacritics and in pausal form so the voice pronounces them right:
 ta marbuta is dropped and the word ends on its fatha (a trailing ة/ه is
 read as /t/ or /h/), and shadda goes before its vowel. The game itself shows the words without diacritics.
 
-Usage: python3 -I scripts/voice/generate.py <path/to/ar_JO-kareem-medium.onnx>
+Usage: python3 -I scripts/voice/generate.py <path/to/ar_JO-kareem-medium.onnx> [style] [out_dir]
 """
 import io
 import subprocess
@@ -29,34 +29,54 @@ TEXTS = [
     ('قَاف', 'قِطَّ'), ('كَاف', 'كَلْب'), ('لَام', 'لَيْمُون'), ('مِيم', 'مَوْز'),
     ('نُون', 'نَحْلَ'), ('هَاء', 'هَدِيَّ'), ('وَاو', 'وَرْدَ'), ('يَاء', 'يَد'),
 ]
-EXTRA = {'well-done': 'أَحْسَنْت'}
+EXTRA = {'well-done': 'أَحْسَنْت!'}
 
 OUT = Path(__file__).resolve().parents[2] / 'public' / 'audio'
-# A little slower than normal speech, for small children.
-CONFIG = SynthesisConfig(length_scale=1.2, noise_scale=0.6, noise_w_scale=0.7)
+
+# Voice styles. The raw voice is a deep adult male, which sounds slow and a
+# bit scary to small children, so the default is quicker and pitched up
+# with shifted formants: a smaller, friendlier, cartoon-like voice.
+# (length_scale < 1 = faster; pitch in semitones.)
+STYLES = {
+    'gentle': dict(length=1.0, pitch=3, formant='preserved'),
+    'cartoon': dict(length=0.92, pitch=5, formant='shifted'),
+    'chipmunk': dict(length=0.88, pitch=7, formant='shifted'),
+}
+DEFAULT_STYLE = 'cartoon'
 
 
-def synth(voice: PiperVoice, text: str, name: str) -> None:
+def synth(voice: PiperVoice, text: str, path: Path, style: dict) -> None:
+    config = SynthesisConfig(length_scale=style['length'], noise_scale=0.75, noise_w_scale=0.8)
     buf = io.BytesIO()
     with wave.open(buf, 'wb') as wav:
-        voice.synthesize_wav(text, wav, syn_config=CONFIG)
-    # Trim silence at both ends, then encode a small mono MP3.
-    trim = 'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,apad=pad_dur=0.05'
+        voice.synthesize_wav(text, wav, syn_config=config)
+    ratio = 2 ** (style['pitch'] / 12)
+    trim = 'silenceremove=start_periods=1:start_threshold=-45dB'
+    chain = ','.join([
+        trim, 'areverse', trim, 'areverse',
+        f"rubberband=pitch={ratio:.4f}:formant={style['formant']}",
+        'treble=g=3:f=3000',  # brighter, less boomy
+        'loudnorm=I=-16:TP=-1.5:LRA=7',
+        'apad=pad_dur=0.05',
+    ])
     subprocess.run(
-        ['ffmpeg', '-v', 'error', '-y', '-i', 'pipe:0', '-af', trim, '-ac', '1', '-ar', '22050',
-         '-codec:a', 'libmp3lame', '-b:a', '48k', str(OUT / f'{name}.mp3')],
+        ['ffmpeg', '-v', 'error', '-y', '-i', 'pipe:0', '-af', chain, '-ac', '1', '-ar', '22050',
+         '-codec:a', 'libmp3lame', '-b:a', '48k', str(path)],
         input=buf.getvalue(), check=True)
 
 
 def main() -> None:
+    """generate.py MODEL [STYLE] [OUT_DIR]"""
     voice = PiperVoice.load(sys.argv[1])
     voice.use_tashkeel = False  # our texts already carry diacritics
-    OUT.mkdir(parents=True, exist_ok=True)
+    style = STYLES[sys.argv[2] if len(sys.argv) > 2 else DEFAULT_STYLE]
+    out = Path(sys.argv[3]) if len(sys.argv) > 3 else OUT
+    out.mkdir(parents=True, exist_ok=True)
     for i, (name, word) in enumerate(TEXTS):
-        synth(voice, name, f'letter-{i}')
-        synth(voice, word, f'word-{i}')
+        synth(voice, name, out / f'letter-{i}.mp3', style)
+        synth(voice, word, out / f'word-{i}.mp3', style)
     for name, text in EXTRA.items():
-        synth(voice, text, name)
+        synth(voice, text, out / f'{name}.mp3', style)
 
 
 if __name__ == '__main__':
