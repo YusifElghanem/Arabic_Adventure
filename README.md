@@ -38,6 +38,11 @@ src/
   utils/         face cropping, sound synthesis, Arabic speech
 ```
 
+## Roadmap
+
+See [`PLAN.md`](PLAN.md) (Arabic) for the roadmap and progress, and
+[`CLAUDE.md`](CLAUDE.md) for architecture notes and lessons learned.
+
 ## Develop
 
 Requires Node.js 22.12+.
