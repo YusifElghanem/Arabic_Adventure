@@ -1,8 +1,17 @@
 # CLAUDE.md
 
-Guidance for AI assistants working on this repo. **Read `PLAN.md` first.** It
-holds the roadmap, the agreed decisions and what to do next. When you finish
-a task, tick it in `PLAN.md` and add a line to its progress log.
+Guidance for AI assistants working on this repo.
+
+**Before any work, read in this order:**
+1. `PLAN.md` (Arabic): the roadmap, the agreed decisions, and what to do next.
+2. `docs/HANDOFF.md`: **the complete specification**. Architecture, every
+   number, the art style guide, the specs for the work in progress (section
+   20) and the roadmap (section 21), recipes, troubleshooting. Read at least
+   its sections 1, 3, 4, 19, 20 and 22, plus the section for the area you will
+   touch. It exists so a fresh session reproduces the same results.
+
+When you finish a task: tick it in `PLAN.md`, add a line to its progress log,
+and update `docs/HANDOFF.md` if behaviour, numbers or structure changed.
 
 ## The project
 "مغامرة الحروف" (Arabic Adventure): a 2D candy-pop platformer that teaches
