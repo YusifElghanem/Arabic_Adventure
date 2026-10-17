@@ -15,14 +15,20 @@ describe('voice clips', () => {
     useGameStore.setState({ isMuted: false });
   });
 
-  it('has a name and a word clip for every letter, plus "well done" and the cheers', () => {
-    LETTERS.forEach((_, i) => {
-      expect(files).toContain(`letter-${i}.mp3`);
-      expect(files).toContain(`word-${i}.mp3`);
-    });
-    expect(files).toContain('well-done.mp3');
-    for (let i = 0; i < CHEER_COUNT; i++) expect(files).toContain(`cheer-${i}.mp3`);
-    expect(files).toHaveLength(LETTERS.length * 2 + 1 + CHEER_COUNT);
+  it('the manifest (when generated) lists every clip, and every listed file exists', () => {
+    const manifest = Object.values(import.meta.glob<{ clips: string[] }>('../../public/audio/manifest.json', { eager: true }))[0];
+    if (!manifest) {
+      // Not generated yet (GitHub Actions makes them): the game uses device TTS.
+      expect(files).toHaveLength(0);
+      return;
+    }
+    const expected = [
+      ...LETTERS.flatMap((_, i) => [`letter-${i}`, `word-${i}`]),
+      ...Array.from({ length: CHEER_COUNT }, (_, i) => `cheer-${i}`),
+      'well-done',
+    ];
+    expect([...manifest.clips].sort()).toEqual(expected.sort());
+    expect([...files].sort()).toEqual(expected.map((c) => `${c}.mp3`).sort());
   });
 
   it('never picks the same cheer twice in a row', () => {

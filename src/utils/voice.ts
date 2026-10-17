@@ -5,7 +5,9 @@ import { speakArabic } from './speech';
 
 /**
  * Plays the pre-generated voice clips in /public/audio (letter names, words,
- * "well done"), made offline by scripts/voice/generate.py. They go through
+ * cheers, "well done"), made with a Microsoft neural voice by
+ * scripts/voice/generate.py (run in GitHub Actions). Only clips listed in
+ * audio/manifest.json are played, so a missing set costs no 404s. They go through
  * the shared Web Audio context, which is unlocked by the first tap, so they
  * also play on iOS. If a clip can't be loaded, falls back to the device's
  * Arabic TTS voice (if any).
@@ -29,6 +31,19 @@ export const CLIP_GAP = 0.2;
 
 export const clipUrl = (clip: VoiceClip): string => `${import.meta.env.BASE_URL}audio/${clip}.mp3`;
 
+let manifest: Promise<Set<string>> | undefined;
+/** The clip names that exist (empty if there is no manifest yet). */
+function availableClips(): Promise<Set<string>> {
+  manifest ??=
+    typeof fetch === 'function'
+      ? fetch(`${import.meta.env.BASE_URL}audio/manifest.json`)
+          .then((r) => (r.ok ? (r.json() as Promise<{ clips?: string[] }>) : { clips: [] }))
+          .then((m) => new Set(m.clips ?? []))
+          .catch(() => new Set<string>())
+      : Promise.resolve(new Set<string>());
+  return manifest;
+}
+
 const buffers = new Map<VoiceClip, Promise<AudioBuffer | null>>();
 let playing: AudioBufferSourceNode[] = [];
 /** Bumped on every phrase, so a slow load never plays over a newer phrase. */
@@ -38,13 +53,14 @@ function load(clip: VoiceClip): Promise<AudioBuffer | null> {
   let pending = buffers.get(clip);
   if (!pending) {
     const output = getAudioOutput();
-    pending =
-      output && typeof fetch === 'function'
+    pending = availableClips().then((clips) =>
+      output && clips.has(clip)
         ? fetch(clipUrl(clip))
             .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
             .then((data) => output.ctx.decodeAudioData(data))
             .catch(() => null)
-        : Promise.resolve(null);
+        : null,
+    );
     // Forget failures, so a later call can retry (e.g. after a network blip).
     void pending.then((b) => b ?? buffers.delete(clip));
     buffers.set(clip, pending);

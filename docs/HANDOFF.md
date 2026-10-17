@@ -254,7 +254,7 @@ src/
     faceCropper.ts(+test)      photo decode, face detect (FaceDetector → YCbCr skin → fallback), crop
     sound.ts                   Web Audio synthesiser: jump, land, collect, bump, pop, boing, roar, whoosh, win, tap
     speech.ts                  speakArabic(text) only if an Arabic voice exists (fallback)
-    voice.ts                   say*(): plays public/audio clips, falls back to speech.ts
+    voice.ts                   say*(): plays public/audio clips (manifest), falls back to speech.ts
     random.ts                  (legacy helper from 3D era; art uses art/svg.ts createRandom)
   components/ui/
     TitleScreen.tsx            title, AvatarPreview, outfit radio buttons, Play, parent gate, mute, letter shelf
@@ -1264,52 +1264,42 @@ recipe of the same kind.
   (15.3). Nothing in the game calls it directly any more.
 
 ### 15.3 Voice clips (`utils/voice.ts`, `public/audio/`, `scripts/voice/`)
-- 57 MP3s: `letter-<i>.mp3` (the letter name), `word-<i>.mp3` (the word),
-  with i = the LETTERS index (0..27), and `well-done.mp3` ("أحسنت"). Mono,
-  22.05 kHz, 48 kbps, silence trimmed; ~260 KB in total.
-- Made **offline** by `scripts/voice/generate.py` with **Piper** (neural
-  TTS, `pip install piper-tts`) and the `ar_JO-kareem-medium` voice (male,
-  Jordanian/standard Arabic). Hugging Face and Microsoft's Edge TTS endpoint
-  are blocked from the sandbox; the voice comes from the sherpa-onnx GitHub
-  release (`k2-fsa/sherpa-onnx`, tag `tts-models`,
-  `vits-piper-ar_JO-kareem-medium.tar.bz2`). See `scripts/voice/README.md`.
-- The script's `TEXTS` table mirrors LETTERS order but **with diacritics**,
-  pausal: ta marbuta is dropped so the word ends on its fatha (a final ة/ه
-  is read /t/ or /h/), and shadda goes *before* its vowel (otherwise espeak
-  drops the vowel). Check pronunciation by printing `voice.phonemize(text)`.
-  `use_tashkeel = False` (our diacritics win).
-- **Style (owner feedback 2026-10-17: the raw deep male voice, slowed down,
-  was "slow, boring and a bit scary" for kids).** `STYLES` in the script;
-  default `cartoon`: `length_scale` 0.92 (a bit quicker), pitch +5 semitones
-  with *shifted* formants (rubberband: a smaller, friendlier voice), treble
-  +3 dB at 3 kHz, `loudnorm` I −16 / TP −1.5. Also `gentle` (+3 st,
-  formants preserved, normal speed) and `chipmunk` (+7 st, 0.88).
-  Never go back to a slow, low voice.
-- **Excitement (owner feedback: "the reaction is too calm").** Every text
-  ends in "!" (a real token of this voice: lifts the intonation);
-  `noise_scale` 0.8, `noise_w_scale` 1.0 (less monotone). 6 cheers
-  `cheer-0..5` = وَاو! يَاي! بُرَافُو! شَاطِر! هَايِل! جَمِيل! (+2 semitones more),
-  `CHEER_COUNT` in voice.ts. `randomCheer()` never repeats the last one.
-  Letter completed → `celebrateLetter(i)` = cheer + name + word; goal →
-  `sayWellDone()` = cheer + "أحسنت!"; ب in Level 1 → cheer + "باء".
-  The friend's greeting stays the plain word (it repeats often).
-- Playback: fetch → `decodeAudioData` on the shared Web Audio context
-  (`sound.ts#getAudioOutput`, so iOS plays it after the first tap), cached
-  per clip (failures are forgotten so they retry). `say(clips, fallback)`
-  plays clips back to back with `CLIP_GAP` 0.2 s, at gain 1.8 into the
-  master gain; a new phrase stops the previous one; a slow load never plays
-  over a newer phrase (`phraseId`). Any clip missing → `speakArabic(fallback)`.
-  Respects mute.
-- Helpers: `sayLetter(i)`, `sayWord(i)`, `sayLetterAndWord(i)`,
-  `sayWellDone()`, `preloadLetterVoice(i)` (LevelScene calls it in
-  `create()`: the level's letter, or 0 and 1 in Level 1). `letterIndex(spec)`
-  in `letters.ts` gives i.
-- Call sites: LetterB `sayLetter(1)`; FloatingLetterA `sayLetterAndWord(0)`;
-  GoalGate `sayWellDone()`; LetterDisplay `sayLetterAndWord`; WordFriend
-  `sayWord` (or `sayLetterAndWord` once the letter is complete).
-- To replace with human recordings: drop files with the same names into
-  `public/audio/` (same format); no code change. `voice.test.ts` checks
-  that exactly 63 clips exist (57 + 6 cheers).
+- 63 MP3s: `letter-<i>.mp3` (letter name), `word-<i>.mp3` (word), i = the
+  LETTERS index (0..27); `cheer-0..5.mp3` (واو! ياي! برافو! شاطر! هايل! جميل!);
+  `well-done.mp3` ("أحسنت!"); plus `manifest.json` `{voice, clips[]}`.
+- **Voice: Microsoft neural `ar-EG-SalmaNeural`** (Egyptian female) via
+  `edge-tts` 7.3.1, rate +0%, pitch +12Hz, silence trimmed with ffmpeg, mono
+  48 kbps. The owner chose Microsoft after hearing the alternatives.
+- **History (don't repeat):** an offline Piper voice (`ar_JO-kareem`) was
+  tried first, since Microsoft's endpoint and Hugging Face are blocked from
+  the sandbox. The owner found it slow, scary, flat, and "very bad", even
+  when pitched up and given cheers. It was removed.
+- **Generation runs in GitHub Actions** (`.github/workflows/voice.yml`):
+  on a push touching `scripts/voice/**` (or by hand), it runs
+  `scripts/voice/generate.py`, commits `public/audio` as github-actions[bot],
+  then starts `deploy.yml` with `gh workflow run` (a GITHUB_TOKEN push
+  doesn't trigger workflows). **After it runs, `git pull` before your next
+  push**, because the bot added a commit to the branch.
+- `generate.py` `TEXTS` mirrors LETTERS order, without diacritics except on
+  words the voice could misread (تُفّاحة دُبّ ذُرة ضِفدع عِنب قِطّة).
+- Playback: `voice.ts` fetches the manifest once. Only listed clips are
+  fetched, then decoded with `decodeAudioData` on the shared Web Audio
+  context (`sound.ts#getAudioOutput`, so iOS plays them after the first tap)
+  and cached. `say(clips, fallback)` plays clips back to back, `CLIP_GAP`
+  0.2 s, gain 1.8. A new phrase stops the previous one, and a slow load
+  never plays over a newer phrase (`phraseId`). If any clip is missing (or
+  there is no manifest), it calls `speakArabic(fallback)`. Respects mute.
+- Helpers: `sayLetter`, `sayWord`, `sayLetterAndWord`, `celebrateLetter`
+  (random cheer + name + word), `sayWellDone` (cheer + أحسنت),
+  `randomCheer()` (never the same twice), `preloadLetterVoice(i)` (LevelScene
+  `create()`). `letterIndex(spec)` lives in `letters.ts`.
+- Call sites: LetterB cheer + `letter-1`; FloatingLetterA
+  `sayLetterAndWord(0)`; GoalGate `sayWellDone()`; LetterDisplay
+  `celebrateLetter`; WordFriend `sayWord` (or `sayLetterAndWord` once the
+  letter is complete).
+- Human recordings can replace any clip by file name (keep it listed in the
+  manifest). `voice.test.ts` checks the manifest and the files match the
+  63 names (or that there are none yet).
 
 ---
 
@@ -2033,7 +2023,7 @@ Build the cheapest four first.
 | 6 farm | crumbling cookies | ride horse (ك level) |
 | 7 castle | a mix | the final boss (ي level) |
 
-### 21.6 Recorded voice (✅ done 2026-10-17 with a computer voice, see 15.3; human recordings optional)
+### 21.6 Recorded voice (✅ done 2026-10-17 with Microsoft's neural voice, see 15.3; human recordings optional)
 - Files: `public/audio/letter-<index>.mp3` (the letter name, for example
   "باء") and `public/audio/word-<index>.mp3` (the word, for example "بطة"),
   with index = the LETTERS index (0..27). Mono, 44.1 kHz, ~64–96 kbps,

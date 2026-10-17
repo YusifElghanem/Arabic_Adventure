@@ -1,0 +1,48 @@
+name: Generate voice clips
+
+# The sandbox can't reach Microsoft's speech service, so the clips are made
+# here and committed back. Runs when the generator changes, or by hand.
+on:
+  push:
+    branches: [claude/arabic-toddler-platformer-avmer4]
+    paths: ['scripts/voice/**', '.github/workflows/voice.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: voice-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  voice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install edge-tts==7.3.1
+
+      - run: python scripts/voice/generate.py
+
+      # A push made with GITHUB_TOKEN doesn't trigger other workflows, so the
+      # deploy is started explicitly.
+      - name: Commit the clips and redeploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/audio
+          if git diff --cached --quiet; then echo "No changes."; exit 0; fi
+          git commit -m "Regenerate voice clips (Microsoft neural voice)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}"

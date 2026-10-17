@@ -1,16 +1,19 @@
 # Voice clips generator
 
-Regenerates `public/audio/*.mp3` (28 letter names, 28 words, "أحسنت") with
-the offline neural TTS **Piper** and its Arabic voice `ar_JO-kareem-medium`.
+`generate.py` makes `public/audio/*.mp3` + `manifest.json` (28 letter names,
+28 words, 6 cheers, "أحسنت") with Microsoft's neural voice
+`ar-EG-SalmaNeural` (edge-tts).
+
+The Claude sandbox can't reach Microsoft's service, so
+`.github/workflows/voice.yml` runs it on GitHub whenever this folder changes
+(or by hand from the Actions tab), commits the clips and redeploys. Pull
+before pushing again afterwards.
+
+Locally (any computer with internet and ffmpeg):
 
 ```bash
-pip install piper-tts            # needs ffmpeg with libmp3lame
-curl -sSLO https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ar_JO-kareem-medium.tar.bz2
-tar xjf vits-piper-ar_JO-kareem-medium.tar.bz2
-python3 -I scripts/voice/generate.py vits-piper-ar_JO-kareem-medium/ar_JO-kareem-medium.onnx
+pip install edge-tts==7.3.1
+python3 scripts/voice/generate.py            # or pass another voice, e.g. ar-EG-ShakirNeural
 ```
 
-The texts live in `generate.py` (`TEXTS`, same order as `src/game/letters.ts`),
-with diacritics and in pausal form. To fix a word's pronunciation, change its
-diacritics there and check with `voice.phonemize(text)`. Don't commit the
-voice model (~60 MB).
+To fix a word's pronunciation, add diacritics to it in `TEXTS`.
