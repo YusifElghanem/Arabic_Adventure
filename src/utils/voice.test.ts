@@ -5,7 +5,7 @@ import { useGameStore } from '@/stores/useGameStore';
 const speakArabic = vi.fn((_text: string) => true);
 vi.mock('./speech', () => ({ speakArabic: (t: string) => speakArabic(t) }));
 
-const { clipUrl, sayLetterAndWord, sayWellDone } = await import('./voice');
+const { CHEER_COUNT, clipUrl, randomCheer, sayLetterAndWord, sayWellDone } = await import('./voice');
 
 const files = Object.keys(import.meta.glob('../../public/audio/*.mp3')).map((p) => p.split('/').pop());
 
@@ -15,13 +15,23 @@ describe('voice clips', () => {
     useGameStore.setState({ isMuted: false });
   });
 
-  it('has a name and a word clip for every letter, plus "well done"', () => {
+  it('has a name and a word clip for every letter, plus "well done" and the cheers', () => {
     LETTERS.forEach((_, i) => {
       expect(files).toContain(`letter-${i}.mp3`);
       expect(files).toContain(`word-${i}.mp3`);
     });
     expect(files).toContain('well-done.mp3');
-    expect(files).toHaveLength(LETTERS.length * 2 + 1);
+    for (let i = 0; i < CHEER_COUNT; i++) expect(files).toContain(`cheer-${i}.mp3`);
+    expect(files).toHaveLength(LETTERS.length * 2 + 1 + CHEER_COUNT);
+  });
+
+  it('never picks the same cheer twice in a row', () => {
+    let last = randomCheer();
+    for (let i = 0; i < 50; i++) {
+      const next = randomCheer();
+      expect(next).not.toBe(last);
+      last = next;
+    }
   });
 
   it('builds URLs under the base path', () => {

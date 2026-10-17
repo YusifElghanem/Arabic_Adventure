@@ -1284,12 +1284,19 @@ recipe of the same kind.
   with *shifted* formants (rubberband: a smaller, friendlier voice), treble
   +3 dB at 3 kHz, `loudnorm` I −16 / TP −1.5. Also `gentle` (+3 st,
   formants preserved, normal speed) and `chipmunk` (+7 st, 0.88).
-  "أحسنت!" carries "!" for a livelier intonation. Never go back to a slow,
-  low voice.
+  Never go back to a slow, low voice.
+- **Excitement (owner feedback: "the reaction is too calm").** Every text
+  ends in "!" (a real token of this voice: lifts the intonation);
+  `noise_scale` 0.8, `noise_w_scale` 1.0 (less monotone). 6 cheers
+  `cheer-0..5` = وَاو! يَاي! بُرَافُو! شَاطِر! هَايِل! جَمِيل! (+2 semitones more),
+  `CHEER_COUNT` in voice.ts. `randomCheer()` never repeats the last one.
+  Letter completed → `celebrateLetter(i)` = cheer + name + word; goal →
+  `sayWellDone()` = cheer + "أحسنت!"; ب in Level 1 → cheer + "باء".
+  The friend's greeting stays the plain word (it repeats often).
 - Playback: fetch → `decodeAudioData` on the shared Web Audio context
   (`sound.ts#getAudioOutput`, so iOS plays it after the first tap), cached
   per clip (failures are forgotten so they retry). `say(clips, fallback)`
-  plays clips back to back with `CLIP_GAP` 0.25 s, at gain 1.8 into the
+  plays clips back to back with `CLIP_GAP` 0.2 s, at gain 1.8 into the
   master gain; a new phrase stops the previous one; a slow load never plays
   over a newer phrase (`phraseId`). Any clip missing → `speakArabic(fallback)`.
   Respects mute.
@@ -1302,7 +1309,7 @@ recipe of the same kind.
   `sayWord` (or `sayLetterAndWord` once the letter is complete).
 - To replace with human recordings: drop files with the same names into
   `public/audio/` (same format); no code change. `voice.test.ts` checks
-  that exactly 57 clips exist.
+  that exactly 63 clips exist (57 + 6 cheers).
 
 ---
 

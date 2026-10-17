@@ -30,6 +30,11 @@ TEXTS = [
     ('نُون', 'نَحْلَ'), ('هَاء', 'هَدِيَّ'), ('وَاو', 'وَرْدَ'), ('يَاء', 'يَد'),
 ]
 EXTRA = {'well-done': 'أَحْسَنْت!'}
+# Short cheers played before the big moments (picked at random in the game,
+# so it never sounds the same twice). Count must match CHEER_COUNT in
+# src/utils/voice.ts. Said a bit higher than the rest: excited.
+CHEERS = ['وَاو!', 'يَاي!', 'بُرَافُو!', 'شَاطِر!', 'هَايِل!', 'جَمِيل!']
+CHEER_PITCH = 2  # extra semitones on top of the style
 
 OUT = Path(__file__).resolve().parents[2] / 'public' / 'audio'
 
@@ -45,12 +50,16 @@ STYLES = {
 DEFAULT_STYLE = 'cartoon'
 
 
-def synth(voice: PiperVoice, text: str, path: Path, style: dict) -> None:
-    config = SynthesisConfig(length_scale=style['length'], noise_scale=0.75, noise_w_scale=0.8)
+def synth(voice: PiperVoice, text: str, path: Path, style: dict, extra_pitch: float = 0) -> None:
+    # Higher noise = livelier, less monotone prosody. Every text ends in "!"
+    # (a real token for this voice), which lifts the intonation.
+    config = SynthesisConfig(length_scale=style['length'], noise_scale=0.8, noise_w_scale=1.0)
+    if not text.endswith('!'):
+        text += '!'
     buf = io.BytesIO()
     with wave.open(buf, 'wb') as wav:
         voice.synthesize_wav(text, wav, syn_config=config)
-    ratio = 2 ** (style['pitch'] / 12)
+    ratio = 2 ** ((style['pitch'] + extra_pitch) / 12)
     trim = 'silenceremove=start_periods=1:start_threshold=-45dB'
     chain = ','.join([
         trim, 'areverse', trim, 'areverse',
@@ -77,6 +86,8 @@ def main() -> None:
         synth(voice, word, out / f'word-{i}.mp3', style)
     for name, text in EXTRA.items():
         synth(voice, text, out / f'{name}.mp3', style)
+    for i, text in enumerate(CHEERS):
+        synth(voice, text, out / f'cheer-{i}.mp3', style, CHEER_PITCH)
 
 
 if __name__ == '__main__':

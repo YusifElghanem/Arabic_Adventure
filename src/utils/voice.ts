@@ -11,10 +11,21 @@ import { speakArabic } from './speech';
  * Arabic TTS voice (if any).
  */
 
-export type VoiceClip = `letter-${number}` | `word-${number}` | 'well-done';
+export type VoiceClip = `letter-${number}` | `word-${number}` | `cheer-${number}` | 'well-done';
+
+/** Cheers ("واو!", "ياي!", "برافو!", "شاطر!", "هايل!", "جميل!"), see scripts/voice/generate.py. */
+export const CHEER_COUNT = 6;
+let lastCheer = -1;
+/** A random cheer, never the same one twice in a row. */
+export function randomCheer(): VoiceClip {
+  let i = Math.floor(Math.random() * CHEER_COUNT);
+  if (i === lastCheer) i = (i + 1) % CHEER_COUNT;
+  lastCheer = i;
+  return `cheer-${i}`;
+}
 
 /** Pause between clips in a phrase ("باء… بطة"), in seconds. */
-export const CLIP_GAP = 0.25;
+export const CLIP_GAP = 0.2;
 
 export const clipUrl = (clip: VoiceClip): string => `${import.meta.env.BASE_URL}audio/${clip}.mp3`;
 
@@ -46,6 +57,7 @@ export function preloadLetterVoice(index: number): void {
   void load(`letter-${index}`);
   void load(`word-${index}`);
   void load('well-done');
+  for (let i = 0; i < CHEER_COUNT; i++) void load(`cheer-${i}`);
 }
 
 function stopPlaying(): void {
@@ -95,4 +107,7 @@ export const sayLetter = (index: number) => say([`letter-${index}`], LETTERS[ind
 export const sayWord = (index: number) => say([`word-${index}`], LETTERS[index].word);
 export const sayLetterAndWord = (index: number) =>
   say([`letter-${index}`, `word-${index}`], `${LETTERS[index].name}… ${LETTERS[index].word}`);
-export const sayWellDone = () => say(['well-done'], 'أحسنت');
+/** The big moment (letter completed): a cheer, then name and word. */
+export const celebrateLetter = (index: number) =>
+  say([randomCheer(), `letter-${index}`, `word-${index}`], `${LETTERS[index].name}… ${LETTERS[index].word}`);
+export const sayWellDone = () => say([randomCheer(), 'well-done'], 'أحسنت');

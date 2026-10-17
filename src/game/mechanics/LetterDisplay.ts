@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { selectIsLetterComplete, useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
-import { sayLetterAndWord } from '@/utils/voice';
+import { celebrateLetter } from '@/utils/voice';
 import { ArtKeys } from '../art';
 import { MechanicKeys } from '../art/mechanics';
 import type { LetterSpec } from '../letters';
@@ -172,7 +172,7 @@ export default class LetterDisplay {
         .setDepth(Depth.sparkles);
       useGameStore.getState().discoverLetter(spec.letter);
       playSound('win');
-      scene.time.delayedCall(400, () => sayLetterAndWord(letterIndex(spec)));
+      scene.time.delayedCall(400, () => celebrateLetter(letterIndex(spec)));
     });
   }
 }
