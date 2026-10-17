@@ -13,3 +13,4 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 scripts/e2e/out/
+__pycache__/

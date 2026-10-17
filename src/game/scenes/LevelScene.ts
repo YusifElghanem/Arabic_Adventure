@@ -14,6 +14,8 @@ import MysteryBlock from '../mechanics/MysteryBlock';
 import Star from '../mechanics/Star';
 import Player from '../player/Player';
 import { computeCameraZoom } from '../scaling';
+import { preloadLetterVoice } from '@/utils/voice';
+import { letterIndex } from '../letters';
 import Ambient from '../world/Ambient';
 import { decoratePlatforms } from '../world/Decorations';
 import ParallaxBackground from '../world/ParallaxBackground';
@@ -85,6 +87,13 @@ export default class LevelScene extends Phaser.Scene {
     // Register goals first, so mechanics that read the session see this run's goals.
     if (useGameStore.getState().session?.runId === this.runId) {
       useGameStore.getState().registerLevelGoals(goals);
+    }
+
+    // Fetch this level's voice clips now, so they play without delay.
+    if (this.level.letter) preloadLetterVoice(letterIndex(this.level.letter));
+    else {
+      preloadLetterVoice(0);
+      preloadLetterVoice(1);
     }
 
     this.cameras.main.setBackgroundColor(SKY_COLOR);

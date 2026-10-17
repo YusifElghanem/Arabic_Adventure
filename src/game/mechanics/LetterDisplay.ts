@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { selectIsLetterComplete, useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
-import { speakArabic } from '@/utils/speech';
+import { sayLetterAndWord } from '@/utils/voice';
 import { ArtKeys } from '../art';
 import { MechanicKeys } from '../art/mechanics';
 import type { LetterSpec } from '../letters';
-import { requiredDots } from '../letters';
+import { letterIndex, requiredDots } from '../letters';
 import type DotCompanions from '../player/DotCompanions';
 import { DISPLAY_FONT } from '../constants';
 import { Depth } from '../world/depths';
@@ -172,7 +172,7 @@ export default class LetterDisplay {
         .setDepth(Depth.sparkles);
       useGameStore.getState().discoverLetter(spec.letter);
       playSound('win');
-      scene.time.delayedCall(400, () => speakArabic(`${spec.name}… ${spec.word}`));
+      scene.time.delayedCall(400, () => sayLetterAndWord(letterIndex(spec)));
     });
   }
 }

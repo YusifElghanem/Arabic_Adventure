@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { selectIsLetterComplete, useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
-import { speakArabic } from '@/utils/speech';
+import { sayLetterAndWord, sayWord } from '@/utils/voice';
 import { ArtKeys } from '../art';
-import type { LetterSpec } from '../letters';
+import { letterIndex, type LetterSpec } from '../letters';
 import { Depth } from '../world/depths';
 
 /**
@@ -73,6 +73,6 @@ export default class WordFriend {
     burst.explode(14);
     this.scene.time.delayedCall(900, () => burst.destroy());
     const complete = selectIsLetterComplete(useGameStore.getState());
-    this.scene.time.delayedCall(250, () => speakArabic(complete ? `${this.spec.name}… ${this.spec.word}` : this.spec.word));
+    this.scene.time.delayedCall(250, () => (complete ? sayLetterAndWord : sayWord)(letterIndex(this.spec)));
   }
 }

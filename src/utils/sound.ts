@@ -30,6 +30,12 @@ function getContext(): AudioContext | null {
   return context;
 }
 
+/** The shared context and master gain, for other audio (recorded voice clips). */
+export function getAudioOutput(): { ctx: AudioContext; out: AudioNode } | null {
+  const ctx = getContext();
+  return ctx && master ? { ctx, out: master } : null;
+}
+
 /** Must run inside a user gesture at least once for sound to play. */
 export function unlockAudio(): void {
   const ctx = getContext();

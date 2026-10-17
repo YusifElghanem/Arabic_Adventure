@@ -83,4 +83,6 @@ export const requiredDots = (spec: LetterSpec): number => Math.max(1, spec.dots)
 export const FIRST_TEMPLATE_LETTER = 2;
 export const letterForLevel = (levelId: number): LetterSpec | undefined =>
   levelId >= FIRST_TEMPLATE_LETTER ? LETTERS[levelId] : undefined;
+/** Index in LETTERS (also the voice clip number). */
+export const letterIndex = (spec: LetterSpec): number => LETTERS.indexOf(spec);
 export const TOTAL_LEVELS = LETTERS.length - 1;

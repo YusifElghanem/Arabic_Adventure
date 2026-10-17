@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { selectIsLetterComplete, useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
-import { speakArabic } from '@/utils/speech';
+import { sayWellDone } from '@/utils/voice';
 import { ArtKeys } from '../art';
 import { MechanicKeys, RAINBOW_SIZE } from '../art/mechanics';
 import { Depth } from '../world/depths';
@@ -74,7 +74,7 @@ export default class GoalGate {
     if (selectIsLetterComplete(useGameStore.getState())) {
       this.done = true;
       playSound('win');
-      this.scene.time.delayedCall(300, () => speakArabic('أحسنت'));
+      this.scene.time.delayedCall(300, () => sayWellDone());
       const confetti = this.scene.add
         .particles(this.arch.x, this.arch.y - RAINBOW_SIZE.height, ArtKeys.sparkle, {
           lifespan: 1400,

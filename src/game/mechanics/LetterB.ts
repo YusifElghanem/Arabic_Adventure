@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { selectIsLetterComplete, useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
-import { speakArabic } from '@/utils/speech';
+import { sayLetter } from '@/utils/voice';
 import { ArtKeys } from '../art';
 import { BAA_BOTTOM_Y, BAA_FLOOR_X, BAA_FLOOR_Y, BAA_SIZE, DOT_SIZE, MechanicKeys } from '../art/mechanics';
 import { Depth } from '../world/depths';
@@ -97,7 +97,7 @@ export default class LetterB {
 
     useGameStore.getState().discoverLetter('ب');
     playSound('pop');
-    this.scene.time.delayedCall(350, () => speakArabic('باء'));
+    this.scene.time.delayedCall(350, () => sayLetter(1));
     this.dot.setScale(s * 0.2);
     this.scene.tweens.add({ targets: this.dot, scale: s, duration: 500, ease: 'Back.easeOut' });
     // A happy wiggle.

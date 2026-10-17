@@ -253,7 +253,8 @@ src/
   utils/
     faceCropper.ts(+test)      photo decode, face detect (FaceDetector → YCbCr skin → fallback), crop
     sound.ts                   Web Audio synthesiser: jump, land, collect, bump, pop, boing, roar, whoosh, win, tap
-    speech.ts                  speakArabic(text) only if an Arabic voice exists
+    speech.ts                  speakArabic(text) only if an Arabic voice exists (fallback)
+    voice.ts                   say*(): plays public/audio clips, falls back to speech.ts
     random.ts                  (legacy helper from 3D era; art uses art/svg.ts createRandom)
   components/ui/
     TitleScreen.tsx            title, AvatarPreview, outfit radio buttons, Play, parent gate, mute, letter shelf
@@ -1259,8 +1260,41 @@ recipe of the same kind.
 - The voice list is refreshed on `voiceschanged`. It respects mute.
 - Current phrases: `'باء'` (ب complete), `'ألف… أسد'` (meeting أ),
   `'أحسنت'` (goal).
-- Template levels will speak `` `${name}… ${word}` `` (section 20).
-- Future: recorded human audio replaces TTS when present (section 21.6).
+- Since 2026-10-17 `speakArabic` is only the **fallback** of the voice clips
+  (15.3). Nothing in the game calls it directly any more.
+
+### 15.3 Voice clips (`utils/voice.ts`, `public/audio/`, `scripts/voice/`)
+- 57 MP3s: `letter-<i>.mp3` (the letter name), `word-<i>.mp3` (the word),
+  with i = the LETTERS index (0..27), and `well-done.mp3` ("أحسنت"). Mono,
+  22.05 kHz, 48 kbps, silence trimmed; ~260 KB in total.
+- Made **offline** by `scripts/voice/generate.py` with **Piper** (neural
+  TTS, `pip install piper-tts`) and the `ar_JO-kareem-medium` voice (male,
+  Jordanian/standard Arabic). Hugging Face and Microsoft's Edge TTS endpoint
+  are blocked from the sandbox; the voice comes from the sherpa-onnx GitHub
+  release (`k2-fsa/sherpa-onnx`, tag `tts-models`,
+  `vits-piper-ar_JO-kareem-medium.tar.bz2`). See `scripts/voice/README.md`.
+- The script's `TEXTS` table mirrors LETTERS order but **with diacritics**,
+  pausal: ta marbuta is dropped so the word ends on its fatha (a final ة/ه
+  is read /t/ or /h/), and shadda goes *before* its vowel (otherwise espeak
+  drops the vowel). Check pronunciation by printing `voice.phonemize(text)`.
+  `use_tashkeel = False` (our diacritics win). `length_scale` 1.2 (slower).
+- Playback: fetch → `decodeAudioData` on the shared Web Audio context
+  (`sound.ts#getAudioOutput`, so iOS plays it after the first tap), cached
+  per clip (failures are forgotten so they retry). `say(clips, fallback)`
+  plays clips back to back with `CLIP_GAP` 0.35 s, at gain 1.8 into the
+  master gain; a new phrase stops the previous one; a slow load never plays
+  over a newer phrase (`phraseId`). Any clip missing → `speakArabic(fallback)`.
+  Respects mute.
+- Helpers: `sayLetter(i)`, `sayWord(i)`, `sayLetterAndWord(i)`,
+  `sayWellDone()`, `preloadLetterVoice(i)` (LevelScene calls it in
+  `create()`: the level's letter, or 0 and 1 in Level 1). `letterIndex(spec)`
+  in `letters.ts` gives i.
+- Call sites: LetterB `sayLetter(1)`; FloatingLetterA `sayLetterAndWord(0)`;
+  GoalGate `sayWellDone()`; LetterDisplay `sayLetterAndWord`; WordFriend
+  `sayWord` (or `sayLetterAndWord` once the letter is complete).
+- To replace with human recordings: drop files with the same names into
+  `public/audio/` (same format); no code change. `voice.test.ts` checks
+  that exactly 57 clips exist.
 
 ---
 
@@ -1984,7 +2018,7 @@ Build the cheapest four first.
 | 6 farm | crumbling cookies | ride horse (ك level) |
 | 7 castle | a mix | the final boss (ي level) |
 
-### 21.6 Recorded voice (Step 5a, optional; needs the owner's recordings)
+### 21.6 Recorded voice (✅ done 2026-10-17 with a computer voice, see 15.3; human recordings optional)
 - Files: `public/audio/letter-<index>.mp3` (the letter name, for example
   "باء") and `public/audio/word-<index>.mp3` (the word, for example "بطة"),
   with index = the LETTERS index (0..27). Mono, 44.1 kHz, ~64–96 kbps,

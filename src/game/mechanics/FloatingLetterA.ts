@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
-import { speakArabic } from '@/utils/speech';
+import { sayLetterAndWord } from '@/utils/voice';
 import { ArtKeys } from '../art';
 import { ALEF_SIZE, LION_SIZE, MechanicKeys } from '../art/mechanics';
 import { Depth } from '../world/depths';
@@ -72,7 +72,7 @@ export default class FloatingLetterA {
         .setDepth(Depth.sparkles);
     }
     playSound('roar');
-    this.scene.time.delayedCall(450, () => speakArabic('ألف… أسد'));
+    this.scene.time.delayedCall(450, () => sayLetterAndWord(0));
 
     // The letter flips round (a 2D "spin") and hops.
     const s = this.alef.scaleY;
