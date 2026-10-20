@@ -2,6 +2,11 @@ import Phaser from 'phaser';
 import { useGameStore } from '@/stores/useGameStore';
 import { EventBus } from '../EventBus';
 import { ART_RESOLUTION_KEY } from '../assets';
+import { lookId, onesieArt } from '../art/character';
+import { toDataUri } from '../art/svg';
+import { placeCoins } from '../coins';
+import Coin from '../mechanics/Coin';
+import { onesieLook } from '../shop';
 import { SKY_COLOR, SceneKeys, type LevelSceneData } from '../constants';
 import DotCompanions from '../player/DotCompanions';
 import LetterDisplay from '../mechanics/LetterDisplay';
@@ -30,6 +35,10 @@ import Platform from '../world/Platform';
 /** Keep the child in the lower part of the screen, with sky above. */
 const CAMERA_FOLLOW_OFFSET_Y = 120;
 const LOOK_AHEAD = 0.45;
+/** Registry key: which onesie look the character textures currently show. */
+const LOOK_KEY = 'onesieLook';
+/** Magnet tool: coins within this distance of the child glide in. */
+const MAGNET_RADIUS = 260;
 
 export default class LevelScene extends Phaser.Scene {
   private level!: LevelDefinition;
@@ -48,6 +57,7 @@ export default class LevelScene extends Phaser.Scene {
   friend?: WordFriend;
   companions?: DotCompanions;
   private lookAhead = 0;
+  coins: Coin[] = [];
 
   constructor() {
     super(SceneKeys.Level);
@@ -61,6 +71,7 @@ export default class LevelScene extends Phaser.Scene {
     this.platforms = [];
     this.lookAhead = 0;
     this.blocks = [];
+    this.coins = [];
     this.letterB = undefined;
     this.mysteryBlock = undefined;
     this.letterDisplay = undefined;
@@ -68,13 +79,26 @@ export default class LevelScene extends Phaser.Scene {
     this.companions = undefined;
   }
 
-  /** Template levels load their word picture here (only the one this level needs). */
+  /**
+   * Loads what this run needs beyond the shared manifest: the onesie in the
+   * shop look the child is wearing (rebuilt only when it changed), and for
+   * template levels the word picture.
+   */
   preload(): void {
+    const r = (this.registry.get(ART_RESOLUTION_KEY) as number | undefined) ?? 1;
+    const { costume, skin } = useGameStore.getState();
+    const look = onesieLook(costume, skin);
+    if (this.registry.get(LOOK_KEY) !== lookId(look)) {
+      this.registry.set(LOOK_KEY, lookId(look));
+      for (const piece of onesieArt(look)) {
+        this.textures.remove(piece.key);
+        this.load.svg(piece.key, toDataUri(piece.svg()), { width: Math.round(piece.width * r), height: Math.round(piece.height * r) });
+      }
+    }
     const spec = this.level.letter;
     if (!spec) return;
     const key = friendTextureKey(spec);
     if (this.textures.exists(key)) return;
-    const r = (this.registry.get(ART_RESOLUTION_KEY) as number | undefined) ?? 1;
     const size = Math.round(FRIEND_SIZE * 1.4 * r);
     this.load.svg(key, `${import.meta.env.BASE_URL}emoji/${spec.emoji}.svg`, { width: size, height: size });
   }
@@ -123,6 +147,8 @@ export default class LevelScene extends Phaser.Scene {
 
     const stars = (this.level.mechanics?.stars ?? this.level.template?.stars ?? []).map((s) => new Star(this, s.x, s.y, resolution));
     for (const star of stars) this.physics.add.overlap(this.player.zone, star.zone, () => star.collect());
+    this.coins = placeCoins(this.level).map((c) => new Coin(this, c.x, c.y, resolution));
+    for (const coin of this.coins) this.physics.add.overlap(this.player.zone, coin.zone, () => coin.collect());
     const goalSpec = this.level.mechanics?.goal ?? this.level.template!.goal;
     const goal = new GoalGate(this, goalSpec.x, goalSpec.groundY, resolution);
     this.physics.add.overlap(this.player.zone, goal.sensor, () => goal.enter());
@@ -145,6 +171,14 @@ export default class LevelScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     this.player.update(time, delta);
     this.companions?.update(delta, this.player.feet);
+    if (useGameStore.getState().tool === 'magnet') {
+      const { x, y } = this.player.feet;
+      const cy = y - 70;
+      for (const coin of this.coins) {
+        const p = coin.position;
+        if (!coin.isCollected && Math.hypot(p.x - x, p.y - cy) < MAGNET_RADIUS) coin.pullTowards(x, cy, delta / 1000);
+      }
+    }
 
     // Look ahead in the direction of travel (smoothed), so the child sees what's coming.
     const dt = Math.min(delta, 50) / 1000;

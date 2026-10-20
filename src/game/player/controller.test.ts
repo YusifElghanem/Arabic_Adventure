@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COYOTE_TIME, GROUND_ACCEL, JUMP_BUFFER, JUMP_SPEED, MAX_FALL_SPEED, MOVE_SPEED } from '../constants';
+import { COYOTE_TIME, DOUBLE_JUMP_SPEED, GROUND_ACCEL, JUMP_BUFFER, JUMP_SPEED, MAX_FALL_SPEED, MOVE_SPEED } from '../constants';
 import { createControllerState, stepController } from './controller';
 
 const DT = 1 / 60;
@@ -40,15 +40,23 @@ describe('stepController', () => {
     expect(late.jumped).toBe(true);
   });
 
-  it('refuses a mid-air jump after coyote time runs out', () => {
+  it('double-jumps once in the air (a bit higher), then refuses until landing', () => {
     const s = createControllerState();
     stepController(s, idle, { vx: 0, vy: 0, grounded: true, now: 1, dt: DT });
-    const tooLate = stepController(s, { axis: 0, jumpPresses: 1 }, { vx: 0, vy: 300, grounded: false, now: 1 + COYOTE_TIME + 0.05, dt: DT });
-    expect(tooLate.jumped).toBe(false);
+    const air = { vx: 0, vy: 300, grounded: false, dt: DT };
+    const second = stepController(s, { axis: 0, jumpPresses: 1 }, { ...air, now: 1 + COYOTE_TIME + 0.05 });
+    expect(second).toMatchObject({ jumped: true, doubleJumped: true, vy: -DOUBLE_JUMP_SPEED });
+    expect(DOUBLE_JUMP_SPEED).toBeGreaterThan(JUMP_SPEED);
+    const third = stepController(s, { axis: 0, jumpPresses: 2 }, { ...air, now: 1.5 });
+    expect(third.jumped).toBe(false);
+    stepController(s, idle, { vx: 0, vy: 0, grounded: true, now: 3, dt: DT });
+    stepController(s, { axis: 0, jumpPresses: 3 }, { vx: 0, vy: 0, grounded: true, now: 3 + DT, dt: DT });
+    expect(stepController(s, { axis: 0, jumpPresses: 4 }, { ...air, now: 3.5 }).doubleJumped).toBe(true);
   });
 
   it('remembers a press made just before landing (jump buffer)', () => {
     const s = createControllerState();
+    s.airJumpsLeft = 0; // double jump already used
     stepController(s, { axis: 0, jumpPresses: 1 }, { vx: 0, vy: 400, grounded: false, now: 5, dt: DT });
     const landed = stepController(s, { axis: 0, jumpPresses: 1 }, { vx: 0, vy: 0, grounded: true, now: 5 + JUMP_BUFFER * 0.8, dt: DT });
     expect(landed.jumped).toBe(true);
@@ -56,6 +64,7 @@ describe('stepController', () => {
 
   it('forgets a press made long before landing', () => {
     const s = createControllerState();
+    s.airJumpsLeft = 0;
     stepController(s, { axis: 0, jumpPresses: 1 }, { vx: 0, vy: 400, grounded: false, now: 5, dt: DT });
     const landed = stepController(s, { axis: 0, jumpPresses: 1 }, { vx: 0, vy: 0, grounded: true, now: 5 + JUMP_BUFFER + 0.1, dt: DT });
     expect(landed.jumped).toBe(false);

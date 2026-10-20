@@ -7,7 +7,7 @@ import { useGameStore } from '@/stores/useGameStore';
  * click or tap handler (the Play button does).
  */
 
-export type SoundName = 'jump' | 'land' | 'collect' | 'bump' | 'pop' | 'boing' | 'roar' | 'whoosh' | 'win' | 'tap';
+export type SoundName = 'jump' | 'land' | 'collect' | 'bump' | 'pop' | 'boing' | 'roar' | 'whoosh' | 'win' | 'tap' | 'coin' | 'buy' | 'giggle';
 
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -112,6 +112,17 @@ const SOUNDS: Record<SoundName, (ctx: AudioContext, out: AudioNode) => void> = {
     tone(c, o, { type: 'sawtooth', from: 180, to: 120, duration: 0.5, volume: 0.07 });
   },
   whoosh: (c, o) => noise(c, o, { duration: 0.7, volume: 0.15, filterFrom: 300, filterTo: 2400 }),
+  coin: (c, o) => {
+    tone(c, o, { type: 'square', from: 988, duration: 0.07, volume: 0.12 });
+    tone(c, o, { type: 'square', from: 1319, start: 0.07, duration: 0.18, volume: 0.12 });
+  },
+  buy: (c, o) => {
+    [784, 988, 1175, 1568].forEach((f, i) => tone(c, o, { type: 'triangle', from: f, start: i * 0.06, duration: 0.16, volume: 0.2 }));
+  },
+  // A little "hee-hee": two quick wobbly high notes.
+  giggle: (c, o) => {
+    [0, 0.13, 0.26].forEach((t, i) => tone(c, o, { type: 'sine', from: 1100 - i * 60, to: 820 - i * 60, start: t, duration: 0.1, volume: 0.22 }));
+  },
   win: (c, o) => {
     [523, 659, 784, 1047, 784, 1047].forEach((f, i) =>
       tone(c, o, { type: 'triangle', from: f, start: i * 0.12, duration: i === 5 ? 0.6 : 0.2, volume: 0.22 }),

@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { OUTFITS, useGameStore, type Outfit } from '@/stores/useGameStore';
 import { isLevelAvailable } from '@/game/levels';
 import { playSound, unlockAudio } from '@/utils/sound';
-import { ExplorerIcon, GridIcon, OnesieIcon, PlayIcon, SoundOffIcon, SoundOnIcon } from './icons';
+import { ExplorerIcon, GridIcon, OnesieIcon, PlayIcon, SoundOffIcon, SoundOnIcon, CoinIcon } from './icons';
 import FullscreenButton from './FullscreenButton';
 import LevelSelect from './LevelSelect';
+import ShopScreen from './ShopScreen';
 import AvatarPreview from './AvatarPreview';
 import ParentGateButton from './ParentGateButton';
 
@@ -31,6 +32,8 @@ export default function TitleScreen() {
   const isMuted = useGameStore((s) => s.isMuted);
   const toggleMuted = useGameStore((s) => s.toggleMuted);
   const [showLevels, setShowLevels] = useState(false);
+  const [showShop, setShowShop] = useState(false);
+  const coins = useGameStore((s) => s.coins);
 
   const play = () => {
     unlockAudio();
@@ -101,7 +104,22 @@ export default function TitleScreen() {
       </div>
 
       <div dir="ltr" className="relative z-10 mt-5 flex shrink-0 items-center gap-5">
-        <div className="size-20" aria-hidden />
+        <button
+          type="button"
+          aria-label="المحل"
+          onClick={() => {
+            unlockAudio();
+            playSound('tap');
+            setShowShop(true);
+          }}
+          className="relative grid size-20 shrink-0 place-items-center rounded-3xl bg-rose-400 shadow-[0_6px_0_#be185d] ring-4 ring-white transition active:translate-y-1 active:shadow-[0_2px_0_#be185d]"
+        >
+          <img src={`${import.meta.env.BASE_URL}emoji/shopping-bags.svg`} alt="" className="size-12" />
+          <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white px-2 font-display text-base font-extrabold text-amber-600 shadow">
+            <CoinIcon size={16} />
+            {coins}
+          </span>
+        </button>
         <button
           type="button"
           aria-label="ابدأ اللعب"
@@ -126,6 +144,7 @@ export default function TitleScreen() {
       <div className="shrink-0" style={{ height: 'max(1.25rem, env(safe-area-inset-bottom))' }} />
 
       {showLevels && <LevelSelect onClose={() => setShowLevels(false)} />}
+      {showShop && <ShopScreen onClose={() => setShowShop(false)} />}
     </div>
   );
 }

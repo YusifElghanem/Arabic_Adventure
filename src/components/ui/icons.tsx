@@ -1,4 +1,6 @@
 import type { SVGProps } from 'react';
+import { coinSvg } from '@/game/art/mechanics';
+import { toDataUri } from '@/game/art/svg';
 
 /**
  * Inline SVG icons. The game UI is icon-only so pre-readers can use it.
@@ -259,3 +261,10 @@ export const ExplorerIcon = ({ size = 48, ...props }: IconProps) => (
     <rect x="16" y="37" width="16" height="6" rx="2.5" fill="#92400e" />
   </svg>
 );
+
+/** The in-game gold coin (same art as the level coins). */
+let coinUri: string | null = null;
+export const CoinIcon = ({ size = 32, className = '' }: { size?: number; className?: string }) => {
+  coinUri ??= toDataUri(coinSvg());
+  return <img src={coinUri} alt="" width={size} height={size} className={className} draggable={false} />;
+};

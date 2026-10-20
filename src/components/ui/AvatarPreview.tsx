@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
-import { CHARACTER_ART, CharacterKeys, FACE_SIZE, buildRig, type PartName } from '@/game/art/character';
+import { CHARACTER_ART, CharacterKeys, FACE_SIZE, buildRig, onesieArt, type PartName } from '@/game/art/character';
+import { onesieLook } from '@/game/shop';
+import type { Outfit } from '@/stores/useGameStore';
 import { toDataUri } from '@/game/art/svg';
 import { useGameStore } from '@/stores/useGameStore';
 
@@ -29,10 +31,29 @@ const PART_ANIMATION: Partial<Record<PartName, string>> = {
   headwear: 'avatar-nod 3s ease-in-out infinite',
 };
 
-export default function AvatarPreview({ className = '' }: { className?: string }) {
-  const outfit = useGameStore((s) => s.outfit);
+/**
+ * `outfit` / `costume` / `skin` override what the child is wearing (the shop
+ * previews items with them).
+ */
+export default function AvatarPreview({
+  className = '',
+  ...override
+}: {
+  className?: string;
+  outfit?: Outfit;
+  costume?: string;
+  skin?: string;
+}) {
+  const outfit = useGameStore((s) => override.outfit ?? s.outfit);
+  const costume = useGameStore((s) => override.costume ?? s.costume);
+  const skin = useGameStore((s) => override.skin ?? s.skin);
   const face = useGameStore((s) => s.faceTextureUrl);
   const rig = useMemo(() => buildRig(outfit), [outfit]);
+  // The onesie parts in the chosen shop look.
+  const lookUris = useMemo(
+    () => new Map(onesieArt(onesieLook(costume, skin)).map((a) => [a.key, toDataUri(a.svg())])),
+    [costume, skin],
+  );
   const feetX = STAGE.width / 2;
   const feetY = STAGE.height - 4;
 
@@ -48,7 +69,7 @@ export default function AvatarPreview({ className = '' }: { className?: string }
           const height = isFace && face ? FACE_SIZE.height : part.height;
           const left = feetX + part.x - part.originX * width;
           const top = feetY + part.y - part.originY * height;
-          const src = isFace ? (face ?? partUri(CharacterKeys.faceDefault)) : partUri(part.key ?? '');
+          const src = isFace ? (face ?? partUri(CharacterKeys.faceDefault)) : (lookUris.get(part.key ?? '') ?? partUri(part.key ?? ''));
           // The head group nods about the neck, not about each part's own pivot.
           const headPart = part.name === 'head' || isFace || part.name === 'hair' || part.name === 'headwear';
           const origin = headPart

@@ -19,7 +19,29 @@ import { svgDocument } from './svg';
 const SKIN = '#f6c9a5';
 const SKIN_SHADE = '#eba983';
 
-const ONESIE = { base: '#b79cff', light: '#e9e0ff', deep: '#8f73ec', paw: '#ffb3cf' };
+/** Onesie colours. Shop costumes and skins swap these (see game/shop.ts). */
+export interface OnesieColors {
+  base: string;
+  light: string;
+  deep: string;
+  paw: string;
+}
+
+/** The shape on top of the hood. */
+export type EarStyle = 'bear' | 'bunny' | 'cat' | 'dino' | 'panda';
+
+export interface OnesieLook {
+  ears: EarStyle;
+  colors: OnesieColors;
+}
+
+export const DEFAULT_ONESIE_LOOK: OnesieLook = {
+  ears: 'bear',
+  colors: { base: '#b79cff', light: '#e9e0ff', deep: '#8f73ec', paw: '#ffb3cf' },
+};
+
+/** Stable id of a look, so textures are only rebuilt when it changes. */
+export const lookId = (look: OnesieLook): string => `${look.ears}:${Object.values(look.colors).join(',')}`;
 const EXPLORER = {
   shirt: '#e8c784',
   shirtDeep: '#c9a25c',
@@ -85,28 +107,66 @@ function defaultFaceSvg(blink: boolean): string {
 
 export const HOOD_SIZE = { width: 108, height: 108 } as const;
 
-function onesieHoodSvg(): string {
+function hoodEars(ears: EarStyle, o: OnesieColors, w: number): string {
+  const c = w / 2;
+  switch (ears) {
+    case 'bunny': {
+      // Two tall floppy ears, leaning out a little.
+      const ear = (x: number, tilt: number) =>
+        `<g transform="rotate(${tilt} ${x} 34)"><ellipse cx="${x}" cy="20" rx="11" ry="21" fill="${o.base}"/><ellipse cx="${x}" cy="22" rx="5.5" ry="14" fill="${o.paw}"/></g>`;
+      return ear(30, -14) + ear(w - 30, 14);
+    }
+    case 'cat': {
+      const ear = (x: number, dir: number) =>
+        `<path d="M${x - 15 * dir},30 L${x - 6 * dir},3 L${x + 13 * dir},22 Z" fill="${o.base}" stroke="${o.base}" stroke-width="5" stroke-linejoin="round"/>` +
+        `<path d="M${x - 8 * dir},25 L${x - 4 * dir},12 L${x + 5 * dir},21 Z" fill="${o.paw}" stroke="${o.paw}" stroke-width="2" stroke-linejoin="round"/>`;
+      return ear(22, 1) + ear(w - 22, -1);
+    }
+    case 'dino': {
+      // A ridge of soft spikes over the crown of the hood.
+      return [-26, -13, 0, 13, 26]
+        .map((dx) => {
+          const x = c + dx;
+          const base = 16 + Math.abs(dx) * 0.35;
+          const tip = base - (dx === 0 ? 16 : 13);
+          return `<path d="M${x - 7},${base} Q${x},${tip - 4} ${x + 7},${base} Z" fill="${o.paw}" stroke="${o.deep}" stroke-width="2" stroke-linejoin="round"/>`;
+        })
+        .join('');
+    }
+    case 'panda': {
+      const ear = (x: number) => `<circle cx="${x}" cy="20" r="15" fill="${o.deep}"/>`;
+      return ear(20) + ear(w - 20);
+    }
+    default: {
+      const ear = (x: number) => `<circle cx="${x}" cy="20" r="16" fill="${o.base}"/><circle cx="${x}" cy="21" r="8.5" fill="${o.paw}"/>`;
+      return ear(20) + ear(w - 20);
+    }
+  }
+}
+
+function onesieHoodSvg(look: OnesieLook = DEFAULT_ONESIE_LOOK): string {
+  const ONESIE = look.colors;
   const { width: w } = HOOD_SIZE;
   const c = w / 2;
   const holeY = c + 5;
-  const ear = (x: number) =>
-    `<circle cx="${x}" cy="20" r="16" fill="${ONESIE.base}"/><circle cx="${x}" cy="21" r="8.5" fill="${ONESIE.paw}"/>`;
   return svgDocument(
     w,
     w,
-    ear(20) +
-      ear(w - 20) +
+    (look.ears === 'dino' ? '' : hoodEars(look.ears, ONESIE, w)) +
       // Hood: a disc with an oval opening for the face (even-odd fill).
       `<path fill-rule="evenodd" fill="url(#hood)" d="M${c},4 a${c - 4},${c - 4} 0 1,0 0.01,0 Z M${c},${holeY - 35} a31,35 0 1,1 -0.01,0 Z"/>` +
       `<ellipse cx="${c}" cy="${holeY}" rx="33" ry="37" fill="none" stroke="${ONESIE.light}" stroke-width="6"/>` +
-      `<ellipse cx="${c - 22}" cy="18" rx="12" ry="6" fill="#fff" opacity="0.35" transform="rotate(-30 ${c - 22} 18)"/>`,
+      `<ellipse cx="${c - 22}" cy="18" rx="12" ry="6" fill="#fff" opacity="0.35" transform="rotate(-30 ${c - 22} 18)"/>` +
+      // Dino spikes sit on top of the hood (there is no room above it).
+      (look.ears === 'dino' ? hoodEars('dino', ONESIE, w) : ''),
     `<linearGradient id="hood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ONESIE.base}"/><stop offset="1" stop-color="${ONESIE.deep}"/></linearGradient>`,
   );
 }
 
 export const BODY_SIZE = { width: 62, height: 54 } as const;
 
-function onesieBodySvg(): string {
+function onesieBodySvg(look: OnesieLook = DEFAULT_ONESIE_LOOK): string {
+  const ONESIE = look.colors;
   const { width: w, height: h } = BODY_SIZE;
   const c = w / 2;
   return svgDocument(
@@ -121,12 +181,14 @@ function onesieBodySvg(): string {
 
 export const LIMB_SIZE = { arm: { width: 20, height: 38 }, leg: { width: 24, height: 36 } } as const;
 
-function onesieArmSvg(): string {
+function onesieArmSvg(look: OnesieLook = DEFAULT_ONESIE_LOOK): string {
+  const ONESIE = look.colors;
   const { width: w, height: h } = LIMB_SIZE.arm;
   return svgDocument(w, h, `<rect x="3" y="0" width="${w - 6}" height="${h - 12}" rx="${(w - 6) / 2}" fill="${ONESIE.base}"/><circle cx="${w / 2}" cy="${h - 8}" r="7.5" fill="${SKIN}"/>`);
 }
 
-function onesieLegSvg(): string {
+function onesieLegSvg(look: OnesieLook = DEFAULT_ONESIE_LOOK): string {
+  const ONESIE = look.colors;
   const { width: w, height: h } = LIMB_SIZE.leg;
   return svgDocument(
     w,
@@ -334,10 +396,7 @@ export const CHARACTER_ART: readonly { key: string; width: number; height: numbe
   { key: CharacterKeys.faceDefault, ...FACE_SIZE, svg: () => defaultFaceSvg(false) },
   { key: CharacterKeys.faceBlink, ...FACE_SIZE, svg: () => defaultFaceSvg(true) },
   { key: CharacterKeys.bubble, ...BUBBLE_SIZE, svg: bubbleSvg },
-  { key: CharacterKeys.onesieHood, ...HOOD_SIZE, svg: onesieHoodSvg },
-  { key: CharacterKeys.onesieBody, ...BODY_SIZE, svg: onesieBodySvg },
-  { key: CharacterKeys.onesieArm, ...LIMB_SIZE.arm, svg: onesieArmSvg },
-  { key: CharacterKeys.onesieLeg, ...LIMB_SIZE.leg, svg: onesieLegSvg },
+  ...onesieArt(DEFAULT_ONESIE_LOOK),
   { key: CharacterKeys.explorerHat, ...HAT_SIZE, svg: explorerHatSvg },
   { key: CharacterKeys.explorerHair, ...HAIR_SIZE, svg: explorerHairSvg },
   { key: CharacterKeys.explorerBody, ...BODY_SIZE, svg: explorerBodySvg },
@@ -345,3 +404,13 @@ export const CHARACTER_ART: readonly { key: string; width: number; height: numbe
   { key: CharacterKeys.explorerArm, ...LIMB_SIZE.arm, svg: explorerArmSvg },
   { key: CharacterKeys.explorerLeg, ...LIMB_SIZE.leg, svg: explorerLegSvg },
 ];
+
+/** The onesie's textures for a shop look (same keys as the default ones). */
+export function onesieArt(look: OnesieLook): { key: string; width: number; height: number; svg: () => string }[] {
+  return [
+    { key: CharacterKeys.onesieHood, ...HOOD_SIZE, svg: () => onesieHoodSvg(look) },
+    { key: CharacterKeys.onesieBody, ...BODY_SIZE, svg: () => onesieBodySvg(look) },
+    { key: CharacterKeys.onesieArm, ...LIMB_SIZE.arm, svg: () => onesieArmSvg(look) },
+    { key: CharacterKeys.onesieLeg, ...LIMB_SIZE.leg, svg: () => onesieLegSvg(look) },
+  ];
+}

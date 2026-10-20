@@ -33,6 +33,13 @@ export const GROUND_ACCEL = 2600;
 export const AIR_ACCEL = 1700;
 /** Jump apex = JUMP_SPEED² / (2·GRAVITY) ≈ 182 px. */
 export const JUMP_SPEED = 853;
+/**
+ * Double jump: one extra jump in the air, a little stronger than the ground
+ * jump (owner request), apex ≈ 900² / 4000 ≈ 202 px above where it starts.
+ * Level layouts never require it.
+ */
+export const AIR_JUMPS = 1;
+export const DOUBLE_JUMP_SPEED = 900;
 /** Seconds after leaving a ledge during which a jump still counts. */
 export const COYOTE_TIME = 0.2;
 /** Seconds a jump press is remembered before landing. */

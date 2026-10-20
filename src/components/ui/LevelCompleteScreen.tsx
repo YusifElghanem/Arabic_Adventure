@@ -1,6 +1,7 @@
 import { isLevelAvailable } from '@/game/levels';
+import { letterForLevel } from '@/game/letters';
 import { ARABIC_LETTERS, MAX_STARS_PER_LEVEL, computeAwardedStars, useGameStore } from '@/stores/useGameStore';
-import { HomeIcon, NextIcon, ReplayIcon, StarIcon, SunIcon } from './icons';
+import { HomeIcon, NextIcon, ReplayIcon, StarIcon, SunIcon, CoinIcon } from './icons';
 import { MenuButton } from './PauseMenu';
 
 /** Celebration overlay: a dancing sun, stars popping in one by one, and big icon buttons. */
@@ -12,8 +13,9 @@ export default function LevelCompleteScreen() {
   const lettersDiscovered = useGameStore((s) => s.lettersDiscovered);
 
   if (!session) return null;
-  // Show letters in alphabet order, not the order they were found.
-  const letters = ARABIC_LETTERS.filter((letter) => lettersDiscovered.includes(letter));
+  // This level's letter(s) only: with 28 letters the whole shelf no longer fits.
+  const levelLetters = letterForLevel(session.levelId)?.letter ?? null;
+  const letters = ARABIC_LETTERS.filter((letter) => lettersDiscovered.includes(letter) && (levelLetters ? letter === levelLetters : letter === 'أ' || letter === 'ب'));
   const awarded = computeAwardedStars(session);
   const nextLevel = session.levelId + 1;
   const hasNext = isLevelAvailable(nextLevel) && isLevelUnlocked(nextLevel);
@@ -45,6 +47,12 @@ export default function LevelCompleteScreen() {
                 {letter}
               </span>
             ))}
+          </div>
+        )}
+
+        {session.coinsCollected > 0 && (
+          <div dir="ltr" className="flex items-center gap-1 font-display text-3xl font-extrabold text-amber-600" aria-label={`+${session.coinsCollected}`}>
+            <CoinIcon size={40} />+{session.coinsCollected}
           </div>
         )}
 

@@ -69,3 +69,10 @@ body,
   0%, 100% { rotate: -3deg; }
   50% { rotate: 3deg; }
 }
+
+/* "Not enough coins": a gentle no-no wiggle (never a buzzer). */
+@keyframes wiggle {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}

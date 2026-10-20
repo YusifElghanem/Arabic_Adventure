@@ -320,3 +320,38 @@ describe('run ids', () => {
     expect(new Set([first, second, third]).size).toBe(3);
   });
 });
+
+describe('coins and shop', () => {
+  it('collects coins into the purse and the session', async () => {
+    const { useGameStore } = await loadStore();
+    const s = useGameStore.getState;
+    s().startLevel(1);
+    s().collectCoin();
+    s().collectCoin();
+    expect(s().coins).toBe(2);
+    expect(s().session!.coinsCollected).toBe(2);
+  });
+
+  it('buys only affordable, unowned items, then wears them', async () => {
+    const { useGameStore } = await loadStore();
+    const s = useGameStore.getState;
+    useGameStore.setState({ coins: 35, outfit: 'explorer' });
+    expect(s().buyItem('costume:cat')).toBe(false); // costs 40
+    expect(s().buyItem('costume:bunny')).toBe(true);
+    expect(s()).toMatchObject({ coins: 5, costume: 'bunny', outfit: 'onesie' });
+    expect(s().buyItem('costume:bunny')).toBe(false);
+    expect(s().buyItem('nope')).toBe(false);
+  });
+
+  it('toggles the equipped tool and ignores unowned items', async () => {
+    const { useGameStore } = await loadStore();
+    const s = useGameStore.getState;
+    s().equipItem('tool:bubble');
+    expect(s().tool).toBeNull();
+    useGameStore.setState({ coins: 100 });
+    s().buyItem('tool:bubble');
+    expect(s().tool).toBe('bubble');
+    s().equipItem('tool:bubble');
+    expect(s().tool).toBeNull();
+  });
+});

@@ -1,6 +1,6 @@
 import { selectSunProgress, useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
-import { PauseIcon, SoundOffIcon, SoundOnIcon, StarIcon, SunIcon } from './icons';
+import { PauseIcon, SoundOffIcon, SoundOnIcon, StarIcon, SunIcon, CoinIcon } from './icons';
 
 /**
  * Icon-only heads-up display over the canvas. The smiling sun's ring fills
@@ -15,6 +15,7 @@ export default function HUD() {
   const isMuted = useGameStore((s) => s.isMuted);
   const toggleMuted = useGameStore((s) => s.toggleMuted);
   const pauseGame = useGameStore((s) => s.pauseGame);
+  const coins = useGameStore((s) => s.coins);
 
   return (
     <div
@@ -38,6 +39,16 @@ export default function HUD() {
             />
           ))}
         </div>
+      </div>
+
+      <div
+        key={coins}
+        className="ms-2 me-auto flex items-center gap-1 self-center rounded-full bg-white/45 py-1 ps-1 pe-3 shadow-lg ring-2 ring-white/70 backdrop-blur-md animate-[star-pop_300ms_ease-out]"
+        role="status"
+        aria-label={`${coins}`}
+      >
+        <CoinIcon size={32} />
+        <span className="font-display text-2xl font-extrabold text-amber-600 drop-shadow-[0_1px_0_#fff]">{coins}</span>
       </div>
 
       <div className="pointer-events-auto flex gap-2">

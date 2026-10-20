@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
+import { STARTER_ITEMS, shopItem, type ToolId } from '@/game/shop';
 
 /* -------------------------------------------------------------------------- */
 /*                                   Types                                    */
@@ -47,6 +48,7 @@ export interface LevelSession {
   totalStars: number;
   letterDotsCollected: number;
   letterDotsRequired: number;
+  coinsCollected: number;
 }
 
 interface PersistedState {
@@ -57,6 +59,15 @@ interface PersistedState {
   faceTextureUrl: string | null;
   lettersDiscovered: ArabicLetter[];
   isMuted: boolean;
+  /** Coins in the purse (collected in levels, spent in the shop). */
+  coins: number;
+  /** Shop item ids the child owns ("costume:bunny", "tool:bubble", …). */
+  ownedItems: string[];
+  /** Onesie costume and colour skin (see game/shop.ts). */
+  costume: string;
+  skin: string;
+  /** The equipped tool, if any. */
+  tool: ToolId | null;
 }
 
 interface TransientState {
@@ -95,6 +106,13 @@ interface GameActions {
   completeLevel: () => void;
   exitLevel: () => void;
 
+  // Coins and shop
+  collectCoin: () => void;
+  /** Buys an item if affordable and not owned yet (then equips it). */
+  buyItem: (id: string) => boolean;
+  /** Equips an owned item; tapping the equipped tool again puts it away. */
+  equipItem: (id: string) => void;
+
   // Maintenance
   resetProgress: () => void;
   setHasHydrated: (value: boolean) => void;
@@ -125,6 +143,21 @@ const revokeIfBlob = (url: string | null): void => {
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
+/** Validates the saved purse and wardrobe (older saves have none). */
+function mergeShop(saved: Partial<PersistedState>, defaults: PersistedState) {
+  const owned = Array.isArray(saved.ownedItems) ? saved.ownedItems.filter((id) => typeof id === 'string' && shopItem(id)) : [];
+  const ownedItems = Array.from(new Set([...STARTER_ITEMS, ...owned]));
+  const has = (id: string) => ownedItems.includes(id);
+  const coins = Number(saved.coins);
+  return {
+    coins: Number.isFinite(coins) && coins > 0 ? Math.floor(coins) : 0,
+    ownedItems,
+    costume: typeof saved.costume === 'string' && has(`costume:${saved.costume}`) ? saved.costume : defaults.costume,
+    skin: typeof saved.skin === 'string' && has(`skin:${saved.skin}`) ? saved.skin : defaults.skin,
+    tool: saved.tool && has(`tool:${saved.tool}`) ? saved.tool : null,
+  };
+}
+
 /** Stars awarded for a finished session, scaled to MAX_STARS_PER_LEVEL. */
 export const computeAwardedStars = (session: LevelSession): number => {
   if (session.totalStars <= 0) return MAX_STARS_PER_LEVEL;
@@ -138,6 +171,11 @@ const createInitialPersistedState = (): PersistedState => ({
   unlockedLevels: [FIRST_LEVEL],
   levelRecords: {},
   faceTextureUrl: null,
+  coins: 0,
+  ownedItems: [...STARTER_ITEMS],
+  costume: 'bear',
+  skin: 'natural',
+  tool: null,
   lettersDiscovered: [],
   isMuted: false,
 });
@@ -268,6 +306,7 @@ export const useGameStore = create<GameState>()(
             totalStars: 0,
             letterDotsCollected: 0,
             letterDotsRequired: 0,
+            coinsCollected: 0,
           },
         }));
         return true;
@@ -340,6 +379,33 @@ export const useGameStore = create<GameState>()(
 
       exitLevel: () => set({ screen: 'title', session: null }),
 
+      /* ---------------------------- Coins & shop -------------------------- */
+
+      // Coins go straight into the purse, so nothing is lost if the child leaves mid-level.
+      collectCoin: () =>
+        set((state) => ({
+          coins: state.coins + 1,
+          session: state.session ? { ...state.session, coinsCollected: state.session.coinsCollected + 1 } : null,
+        })),
+
+      buyItem: (id) => {
+        const item = shopItem(id);
+        const { coins, ownedItems } = get();
+        if (!item || ownedItems.includes(id) || coins < item.price) return false;
+        set({ coins: coins - item.price, ownedItems: [...ownedItems, id] });
+        get().equipItem(id);
+        return true;
+      },
+
+      equipItem: (id) => {
+        const item = shopItem(id);
+        if (!item || !get().ownedItems.includes(id)) return;
+        // Costumes and skins are onesie looks, so wearing one puts the onesie on.
+        if (item.kind === 'costume') set({ costume: item.name, outfit: 'onesie' });
+        else if (item.kind === 'skin') set({ skin: item.name, outfit: 'onesie' });
+        else set((state) => ({ tool: state.tool === item.name ? null : (item.name as ToolId) }));
+      },
+
       /* --------------------------- Maintenance --------------------------- */
 
       resetProgress: () => {
@@ -362,6 +428,11 @@ export const useGameStore = create<GameState>()(
           state.faceTextureUrl && isDataImageUrl(state.faceTextureUrl) ? state.faceTextureUrl : null,
         lettersDiscovered: state.lettersDiscovered,
         isMuted: state.isMuted,
+        coins: state.coins,
+        ownedItems: state.ownedItems,
+        costume: state.costume,
+        skin: state.skin,
+        tool: state.tool,
       }),
       // Check everything read back from storage. Values a parent's browser may
       // have tampered with or corrupted must never crash the game.
@@ -401,6 +472,7 @@ export const useGameStore = create<GameState>()(
               )
             : defaults.lettersDiscovered,
           isMuted: typeof saved.isMuted === 'boolean' ? saved.isMuted : defaults.isMuted,
+          ...mergeShop(saved, defaults),
         };
       },
       onRehydrateStorage: () => (state) => {

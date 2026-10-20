@@ -233,6 +233,31 @@ function starSvg(): string {
   );
 }
 
+/* ---------------------------------- Coin ---------------------------------- */
+
+export const COIN_SIZE = { width: 54, height: 54 } as const;
+
+/** A shiny gold candy coin with a little star stamped in the middle. */
+export function coinSvg(): string {
+  const { width: w } = COIN_SIZE;
+  const c = w / 2;
+  let star = '';
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? 11 : 5;
+    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+    star += `${i === 0 ? 'M' : 'L'}${n(c + Math.cos(a) * r)},${n(c + 1 + Math.sin(a) * r)} `;
+  }
+  return svgDocument(
+    w,
+    w,
+    `<circle cx="${c}" cy="${c}" r="${c - 3}" fill="url(#cg)" stroke="#e0a100" stroke-width="4"/>` +
+      `<circle cx="${c}" cy="${c}" r="${c - 10}" fill="none" stroke="#fff3b0" stroke-width="2.5" opacity="0.8"/>` +
+      `<path d="${star}Z" fill="#ffb800" stroke="#e09a00" stroke-width="1.5" stroke-linejoin="round"/>` +
+      `<ellipse cx="${c - 9}" cy="${c - 11}" rx="6" ry="3.5" fill="#fff" opacity="0.75" transform="rotate(-35 ${c - 9} ${c - 11})"/>`,
+    `<linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff07a"/><stop offset="1" stop-color="#ffc21f"/></linearGradient>`,
+  );
+}
+
 /* -------------------------------- Rainbow -------------------------------- */
 
 export const RAINBOW_SIZE = { width: 360, height: 230 } as const;
@@ -266,6 +291,7 @@ export const MechanicKeys = {
   lion: 'lion',
   lionRoar: 'lion-roar',
   star: 'star',
+  coin: 'coin',
   rainbow: 'rainbow',
 } as const;
 
@@ -280,5 +306,6 @@ export const MECHANIC_ART: readonly { key: string; width: number; height: number
   { key: MechanicKeys.lion, ...LION_SIZE, svg: () => lionSvg(false) },
   { key: MechanicKeys.lionRoar, ...LION_SIZE, svg: () => lionSvg(true) },
   { key: MechanicKeys.star, ...STAR_SIZE, svg: starSvg },
+  { key: MechanicKeys.coin, ...COIN_SIZE, svg: coinSvg },
   { key: MechanicKeys.rainbow, ...RAINBOW_SIZE, svg: rainbowSvg },
 ];

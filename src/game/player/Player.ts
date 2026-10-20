@@ -136,7 +136,10 @@ export default class Player {
         { vx: this.body.velocity.x, vy: this.body.velocity.y, grounded, now: this.clock, dt },
       );
       let vy = out.vy;
-      if (out.jumped) {
+      if (out.doubleJumped) {
+        playSound('boing');
+        this.puff(8);
+      } else if (out.jumped) {
         playSound('jump');
         this.puff(5);
       }
