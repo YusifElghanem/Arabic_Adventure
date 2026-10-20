@@ -1268,7 +1268,7 @@ recipe of the same kind.
   LETTERS index (0..27); `cheer-0..5.mp3` (واو! ياي! برافو! شاطر! هايل! جميل!);
   `well-done.mp3` ("أحسنت!"); plus `manifest.json` `{voice, clips[]}`.
 - **Voice: Microsoft neural `ar-EG-SalmaNeural`** (Egyptian female) via
-  `edge-tts` 7.3.1, rate −25% (owner: +0% was too fast), pitch +12Hz, silence trimmed with ffmpeg, mono
+  `edge-tts` 7.3.1 ("ألف" is written أَلِف, or it reads "alf", thousand), rate −25% (owner: +0% was too fast), pitch +12Hz, silence trimmed with ffmpeg, mono
   48 kbps. The owner chose Microsoft after hearing the alternatives.
 - **History (don't repeat):** an offline Piper voice (`ar_JO-kareem`) was
   tried first, since Microsoft's endpoint and Hugging Face are blocked from
@@ -1843,6 +1843,17 @@ detailed enough to implement without further design decisions. If the owner
 asks for changes, the owner wins. Update this section to match.
 
 ### 21.1 World map and level select (Step 2a)
+- **As built 2026-10-20 (first part):** `components/ui/LevelSelect.tsx`, a
+  full-screen grid of all 27 levels (the letter glyph in its colour, with
+  "أ ب" for Level 1, plus best stars). The next level pulses. It opens from the
+  amber grid button beside Play. **All levels are open** (owner request:
+  progress is per device, so other devices only had أ ب):
+  `isLevelUnlocked = isValidLevelId`, and `unlockedLevels` only drives
+  "Play → continue". The old 2-letter shelf on the title screen was
+  removed. `FullscreenButton` (`utils/fullscreen.ts`, webkit-prefixed, locks
+  landscape when possible, hidden where unsupported, e.g. iPhone) sits on
+  the title top bar and the pause menu. The world-map styling below is
+  still to do.
 - A new React screen `WorldMap.tsx` (no Phaser). `GameScreen` gains `'map'`
   (add it to the store type; `startLevel` still returns to `'playing'`;
   `exitLevel` goes to `'map'` instead of `'title'`).

@@ -22,6 +22,27 @@ const base = ({ size = 24, ...props }: IconProps): SVGProps<SVGSVGElement> => ({
   ...props,
 });
 
+export const GridIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="4" y="4" width="6.5" height="6.5" rx="1.6" fill="currentColor" />
+    <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" fill="currentColor" />
+    <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" fill="currentColor" />
+    <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" fill="currentColor" />
+  </svg>
+);
+
+export const FullscreenIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+  </svg>
+);
+
+export const ExitFullscreenIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+  </svg>
+);
+
 export const PlayIcon = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" fill="currentColor" />

@@ -111,10 +111,10 @@ describe('face texture', () => {
 });
 
 describe('level flow', () => {
-  it('refuses to start locked or invalid levels', async () => {
+  it('refuses to start invalid levels; every valid level is open', async () => {
     const { useGameStore } = await loadStore();
     const s = useGameStore.getState;
-    expect(s().startLevel(2)).toBe(false);
+    expect(s().isLevelUnlocked(27)).toBe(true);
     expect(s().startLevel(0)).toBe(false);
     expect(s().startLevel(99)).toBe(false);
     expect(s().screen).toBe('title');

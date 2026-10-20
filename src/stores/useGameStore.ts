@@ -251,7 +251,9 @@ export const useGameStore = create<GameState>()(
 
       /* ----------------------------- Levels ------------------------------ */
 
-      isLevelUnlocked: (levelId) => get().unlockedLevels.includes(levelId),
+      // Every level is open, so the child can play any letter on any device
+      // (owner request). `unlockedLevels` still records progress for "Play".
+      isLevelUnlocked: (levelId) => isValidLevelId(levelId),
 
       startLevel: (levelId) => {
         if (!isValidLevelId(levelId) || !get().isLevelUnlocked(levelId)) return false;

@@ -1,6 +1,7 @@
 import { useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
 import { HomeIcon, PlayIcon, ReplayIcon } from './icons';
+import FullscreenButton from './FullscreenButton';
 
 /** Icon-only pause overlay: resume (big), restart, home. */
 export default function PauseMenu() {
@@ -22,6 +23,7 @@ export default function PauseMenu() {
           <ReplayIcon size={40} />
         </MenuButton>
       </div>
+      <FullscreenButton className="absolute right-4 top-4" />
     </div>
   );
 }
