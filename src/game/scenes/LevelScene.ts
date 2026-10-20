@@ -11,7 +11,8 @@ import { SKY_COLOR, SceneKeys, type LevelSceneData } from '../constants';
 import DotCompanions from '../player/DotCompanions';
 import LetterDisplay from '../mechanics/LetterDisplay';
 import WordFriend, { FRIEND_SIZE, friendTextureKey } from '../mechanics/WordFriend';
-import { getGuardLevel, getLevelDefinition, type LevelDefinition } from '../levels';
+import { getChallengeLevel, getGuardLevel, getLevelDefinition, thiefCount, type LevelDefinition, type ThiefKind } from '../levels';
+import CandyShot from '../mechanics/CandyShot';
 import BubbleShot from '../mechanics/BubbleShot';
 import GuardedLetter from '../mechanics/GuardedLetter';
 import Thief from '../mechanics/Thief';
@@ -71,6 +72,8 @@ export default class LevelScene extends Phaser.Scene {
   guardLetter?: GuardedLetter;
   thieves: Thief[] = [];
   private bubbles: BubbleShot[] = [];
+  private candies: CandyShot[] = [];
+  private challenge = false;
   private seenActions = 0;
   private bubbleReadyAt = 0;
   private clock = 0;
@@ -84,8 +87,10 @@ export default class LevelScene extends Phaser.Scene {
 
   init(data: LevelSceneData): void {
     const session = useGameStore.getState().session;
-    const thievesMode = session?.runId === data.runId && session.mode === 'thieves';
-    const level = thievesMode ? getGuardLevel(data.levelId) : getLevelDefinition(data.levelId);
+    const mode = session?.runId === data.runId ? session.mode : 'adventure';
+    this.challenge = mode === 'challenge';
+    const level =
+      mode === 'thieves' ? getGuardLevel(data.levelId) : mode === 'challenge' ? getChallengeLevel(data.levelId) : getLevelDefinition(data.levelId);
     if (!level) throw new Error(`Unknown level ${data.levelId}`);
     this.level = level;
     this.runId = data.runId;
@@ -96,6 +101,7 @@ export default class LevelScene extends Phaser.Scene {
     this.guardLetter = undefined;
     this.thieves = [];
     this.bubbles = [];
+    this.candies = [];
     this.seenActions = useInputStore.getState().actionPresses;
     this.bubbleReadyAt = 0;
     this.clock = 0;
@@ -164,12 +170,20 @@ export default class LevelScene extends Phaser.Scene {
     });
 
     this.platforms = this.level.platforms.map((spec) => new Platform(this, spec, resolution));
-    decoratePlatforms(this, this.platforms, this.level.decorSeed, resolution, reducedMotion);
-    const homes = this.platforms.filter((_, i) => i % 2 === 1).map((p) => ({ x: p.spec.x + p.width / 2, y: p.spec.y - 230 }));
+    // Moving platforms carry no scenery (it would float in the air without them).
+    const still = this.platforms.filter((p) => !p.moving);
+    decoratePlatforms(this, still, this.level.decorSeed, resolution, reducedMotion);
+    const homes = still.filter((_, i) => i % 2 === 1).map((p) => ({ x: p.spec.x + p.width / 2, y: p.spec.y - 230 }));
     this.ambient = new Ambient(this, resolution, homes, reducedMotion, this.level.decorSeed);
 
     // The player first: mechanics aim at it.
-    this.player = new Player(this, { spawn: this.level.spawn, killY: this.level.cloudSeaY + 150, resolution });
+    this.player = new Player(this, {
+      spawn: this.level.spawn,
+      killY: this.level.cloudSeaY + 150,
+      resolution,
+      // Challenge mode: falling in costs a heart (the bubble still floats the child home).
+      onFall: this.challenge ? () => useGameStore.getState().loseHeart() : undefined,
+    });
     this.physics.add.collider(this.player.zone, this.platforms.map((p) => p.body));
 
     if (this.level.kind === 'classic') this.buildClassicMechanics(resolution);
@@ -203,6 +217,7 @@ export default class LevelScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    for (const p of this.platforms) p.update(delta);
     this.player.update(time, delta);
     this.companions?.update(delta, this.player.feet);
     const dt = Math.min(delta, 50) / 1000;
@@ -276,7 +291,7 @@ export default class LevelScene extends Phaser.Scene {
   private buildGuardMechanics(resolution: number): void {
     const guard = this.level.guard!;
     this.guardLetter = new GuardedLetter(this, this.level.letter!, guard.letter.x, guard.letter.groundY, resolution);
-    if (useGameStore.getState().session?.runId === this.runId) useGameStore.getState().registerThieves(guard.thieves);
+    if (useGameStore.getState().session?.runId === this.runId) useGameStore.getState().registerThieves(thiefCount(guard));
   }
 
   private updateThieves(dt: number): void {
@@ -286,19 +301,69 @@ export default class LevelScene extends Phaser.Scene {
     const active = this.thieves.filter((t) => t.active).length;
     if (this.thievesSpawned < guard.thieves && active < guard.maxAtOnce && this.clock >= this.nextThiefAt) {
       const entry = guard.entries[this.thievesSpawned % guard.entries.length];
-      const resolution = (this.registry.get(ART_RESOLUTION_KEY) as number | undefined) ?? 1;
-      const phase = (this.thievesSpawned * 2.1) % (Math.PI * 2);
-      this.thieves.push(new Thief(this, this.level.letter!, entry, this.guardLetter!, guard.roam, resolution, phase, () => this.onBefriend()));
+      this.spawnThief(entry, guard.cast?.[this.thievesSpawned] ?? 'looper', false);
       this.thievesSpawned++;
-      this.nextThiefAt = this.clock + 3.5;
+      this.nextThiefAt = this.clock + (this.challenge ? 2.2 : 3.5);
     }
+    this.updateCandies(dt, centre);
+  }
+
+  private spawnThief(entry: { x: number; y: number }, kind: ThiefKind, small: boolean): void {
+    const guard = this.level.guard!;
+    const resolution = (this.registry.get(ART_RESOLUTION_KEY) as number | undefined) ?? 1;
+    const phase = ((this.thieves.length + 1) * 2.1) % (Math.PI * 2);
+    this.thieves.push(
+      new Thief(this, this.level.letter!, entry, this.guardLetter!, guard.roam, resolution, phase, () => this.onBefriend(), {
+        kind,
+        small,
+        speed: guard.speed,
+        throwEvery: guard.throwEvery,
+        onThrow: (x, y) => this.throwCandy(x, y),
+        onSplit: (x, y) => {
+          this.spawnThief({ x: x - 30, y }, 'looper', true);
+          this.spawnThief({ x: x + 30, y }, 'looper', true);
+        },
+      }),
+    );
+  }
+
+  /** Challenge mode: a candy tossed at where the child is now. */
+  private throwCandy(x: number, y: number): void {
+    if (!this.challenge || this.finished) return;
+    const resolution = (this.registry.get(ART_RESOLUTION_KEY) as number | undefined) ?? 1;
+    const target = { x: this.player.feet.x, y: this.player.feet.y - 70 };
+    this.candies.push(new CandyShot(this, { x, y }, target, 240 + this.level.world * 15, resolution));
+    playSound('whoosh');
+  }
+
+  private updateCandies(dt: number, centre: { x: number; y: number }): void {
+    for (const candy of this.candies) {
+      candy.update(dt);
+      if (!candy.alive) continue;
+      const p = candy.position;
+      if (Math.hypot(p.x - centre.x, p.y - centre.y) < 52 && this.player.hurt(p.x)) {
+        candy.pop();
+        useGameStore.getState().loseHeart();
+        continue;
+      }
+      // Bubbles pop candies too.
+      for (const b of this.bubbles) {
+        if (b.alive && Math.hypot(b.position.x - p.x, b.position.y - p.y) < 50) {
+          b.pop();
+          candy.pop();
+          playSound('pop');
+          break;
+        }
+      }
+    }
+    this.candies = this.candies.filter((c) => c.alive);
   }
 
   private onBefriend(): void {
     const store = useGameStore.getState();
     store.befriendThief();
-    // A thank-you: three coins.
-    for (let i = 0; i < 3; i++) this.time.delayedCall(250 + i * 150, () => useGameStore.getState().collectCoin());
+    // A thank-you: three coins (five in challenge mode).
+    for (let i = 0; i < (this.challenge ? 5 : 3); i++) this.time.delayedCall(250 + i * 150, () => useGameStore.getState().collectCoin());
     this.time.delayedCall(250, () => playSound('coin'));
     const session = useGameStore.getState().session;
     if (!this.finished && session && session.thievesBefriended >= session.thievesTotal) {

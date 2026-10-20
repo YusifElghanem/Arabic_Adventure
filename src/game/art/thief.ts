@@ -63,9 +63,54 @@ export function thiefSvg(friend: boolean): string {
   );
 }
 
-export const ThiefKeys = { sneaky: 'thief', friend: 'thief-friend' } as const;
+/** The armored thief's candy helmet (a striped gumdrop shell). */
+export const HELMET_SIZE = { width: 76, height: 44 } as const;
+function helmetSvg(): string {
+  const { width: w, height: h } = HELMET_SIZE;
+  return svgDocument(
+    w,
+    h,
+    `<path d="M4,${h - 6} Q4,4 ${w / 2},4 Q${w - 4},4 ${w - 4},${h - 6} Z" fill="url(#hm)" stroke="#c2410c" stroke-width="3" stroke-linejoin="round"/>` +
+      `<path d="M16,${h - 8} Q20,12 ${w / 2},10 M${w - 16},${h - 8} Q${w - 20},12 ${w / 2},10" fill="none" stroke="#fff" stroke-width="4" opacity="0.7"/>` +
+      `<rect x="0" y="${h - 9}" width="${w}" height="8" rx="4" fill="#ffd23f" stroke="#c2410c" stroke-width="2"/>` +
+      `<circle cx="${w / 2}" cy="6" r="5" fill="#ff4d6d"/>`,
+    `<linearGradient id="hm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb35c"/><stop offset="1" stop-color="#f97316"/></linearGradient>`,
+  );
+}
+
+/** The king thief's crown. */
+export const CROWN_SIZE = { width: 64, height: 40 } as const;
+function crownSvg(): string {
+  const { width: w, height: h } = CROWN_SIZE;
+  return svgDocument(
+    w,
+    h,
+    `<path d="M4,${h - 4} L6,10 L20,24 L${w / 2},4 L${w - 20},24 L${w - 6},10 L${w - 4},${h - 4} Z" fill="#ffd23f" stroke="#d97706" stroke-width="3" stroke-linejoin="round"/>` +
+      `<circle cx="${w / 2}" cy="${h - 12}" r="5" fill="#ff4d6d"/><circle cx="14" cy="${h - 10}" r="3.5" fill="#5ec8ff"/><circle cx="${w - 14}" cy="${h - 10}" r="3.5" fill="#5fe0b0"/>`,
+  );
+}
+
+/** A wrapped candy the challenge thieves toss at the child. */
+export const CANDY_SIZE = { width: 64, height: 34 } as const;
+function candySvg(): string {
+  const { width: w, height: h } = CANDY_SIZE;
+  const c = w / 2;
+  return svgDocument(
+    w,
+    h,
+    `<path d="M2,4 L${c - 12},${h / 2} L2,${h - 4} Z" fill="#ff8cc6" stroke="#db2777" stroke-width="2" stroke-linejoin="round"/>` +
+      `<path d="M${w - 2},4 L${c + 12},${h / 2} L${w - 2},${h - 4} Z" fill="#ff8cc6" stroke="#db2777" stroke-width="2" stroke-linejoin="round"/>` +
+      `<circle cx="${c}" cy="${h / 2}" r="14" fill="#ff4d8d" stroke="#db2777" stroke-width="2.5"/>` +
+      `<path d="M${c - 9},${h / 2 - 6} Q${c},${h / 2 + 2} ${c + 9},${h / 2 - 6}" fill="none" stroke="#fff" stroke-width="3" opacity="0.8"/>`,
+  );
+}
+
+export const ThiefKeys = { sneaky: 'thief', friend: 'thief-friend', helmet: 'thief-helmet', crown: 'thief-crown', candy: 'thief-candy' } as const;
 
 export const THIEF_ART: readonly { key: string; width: number; height: number; svg: () => string }[] = [
   { key: ThiefKeys.sneaky, ...THIEF_SIZE, svg: () => thiefSvg(false) },
   { key: ThiefKeys.friend, ...THIEF_SIZE, svg: () => thiefSvg(true) },
+  { key: ThiefKeys.helmet, ...HELMET_SIZE, svg: helmetSvg },
+  { key: ThiefKeys.crown, ...CROWN_SIZE, svg: crownSvg },
+  { key: ThiefKeys.candy, ...CANDY_SIZE, svg: candySvg },
 ];

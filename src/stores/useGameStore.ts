@@ -10,14 +10,21 @@ export type Outfit = 'onesie' | 'explorer';
 
 export const OUTFITS: readonly Outfit[] = ['onesie', 'explorer'] as const;
 
-/** 'adventure' = the letter levels; 'thieves' = guard a letter from the letter thieves. */
-export type GameMode = 'adventure' | 'thieves';
+/**
+ * 'adventure' = the letter levels; 'thieves' = guard a letter from the letter
+ * thieves; 'challenge' = the hard thieves mode for older kids (own map per
+ * letter, tricky thieves that throw candy, 3 hearts). Challenge is the one
+ * place the child can run out of hearts: it then offers a gentle "try again".
+ */
+export type GameMode = 'adventure' | 'thieves' | 'challenge';
+
+export const CHALLENGE_HEARTS = 3;
 
 /** Thieves mode has one arena per letter (ids 1..28 = letter index + 1). */
 export const THIEF_LEVEL_COUNT = 28;
 
 /** Top-level UI screen the app is currently showing. */
-export type GameScreen = 'title' | 'avatarSetup' | 'playing' | 'paused' | 'levelComplete';
+export type GameScreen = 'title' | 'avatarSetup' | 'playing' | 'paused' | 'levelComplete' | 'tryAgain';
 
 /** Kindergarten-level Arabic letters, written without diacritics. */
 export const ARABIC_LETTERS = [
@@ -52,6 +59,8 @@ export interface LevelSession {
   /** Thieves mode: how many thieves come, and how many became friends. */
   thievesTotal: number;
   thievesBefriended: number;
+  /** Challenge mode: hearts left. */
+  hearts: number;
   /** Increments on every (re)start so level content can remount from scratch. */
   runId: number;
   starsCollected: number;
@@ -78,6 +87,8 @@ interface PersistedState {
   skin: string;
   /** The equipped tool, if any. */
   tool: ToolId | null;
+  /** Challenge mode: best stars (= hearts kept) per letter id 1..28. */
+  challengeRecords: Record<number, number>;
 }
 
 interface TransientState {
@@ -111,6 +122,8 @@ interface GameActions {
   startLevel: (levelId: number, mode?: GameMode) => boolean;
   registerThieves: (total: number) => void;
   befriendThief: () => void;
+  /** Challenge mode: lose a heart; at zero the run ends with "try again". */
+  loseHeart: () => void;
   registerLevelGoals: (goals: LevelGoals) => void;
   collectStar: () => void;
   collectLetterDot: () => void;
@@ -167,11 +180,18 @@ function mergeShop(saved: Partial<PersistedState>, defaults: PersistedState) {
     costume: typeof saved.costume === 'string' && has(`costume:${saved.costume}`) ? saved.costume : defaults.costume,
     skin: typeof saved.skin === 'string' && has(`skin:${saved.skin}`) ? saved.skin : defaults.skin,
     tool: saved.tool && has(`tool:${saved.tool}`) ? saved.tool : null,
+    challengeRecords: Object.fromEntries(
+      Object.entries(saved.challengeRecords ?? {})
+        .map(([k, v]) => [Number(k), Math.floor(Number(v))] as const)
+        .filter(([k, v]) => Number.isInteger(k) && k >= 1 && k <= THIEF_LEVEL_COUNT && v >= 1 && v <= MAX_STARS_PER_LEVEL),
+    ),
   };
 }
 
 /** Stars awarded for a finished session, scaled to MAX_STARS_PER_LEVEL. */
 export const computeAwardedStars = (session: LevelSession): number => {
+  // Challenge: one star per heart kept.
+  if (session.mode === 'challenge') return clamp(session.hearts, 1, MAX_STARS_PER_LEVEL);
   if (session.totalStars <= 0) return MAX_STARS_PER_LEVEL;
   const ratio = session.starsCollected / session.totalStars;
   // Finishing a level always earns at least one star; preschoolers are never "failed".
@@ -188,6 +208,7 @@ const createInitialPersistedState = (): PersistedState => ({
   costume: 'bear',
   skin: 'natural',
   tool: null,
+  challengeRecords: {},
   lettersDiscovered: [],
   isMuted: false,
 });
@@ -306,7 +327,7 @@ export const useGameStore = create<GameState>()(
       isLevelUnlocked: (levelId) => isValidLevelId(levelId),
 
       startLevel: (levelId, mode = 'adventure') => {
-        const valid = mode === 'thieves' ? Number.isInteger(levelId) && levelId >= 1 && levelId <= THIEF_LEVEL_COUNT : get().isLevelUnlocked(levelId);
+        const valid = mode !== 'adventure' ? Number.isInteger(levelId) && levelId >= 1 && levelId <= THIEF_LEVEL_COUNT : get().isLevelUnlocked(levelId);
         if (!valid) return false;
         set((state) => ({
           runCounter: state.runCounter + 1,
@@ -317,6 +338,7 @@ export const useGameStore = create<GameState>()(
             mode,
             thievesTotal: 0,
             thievesBefriended: 0,
+            hearts: CHALLENGE_HEARTS,
             runId: state.runCounter + 1,
             starsCollected: 0,
             totalStars: 0,
@@ -379,9 +401,25 @@ export const useGameStore = create<GameState>()(
           return { session: { ...session, thievesBefriended: session.thievesBefriended + 1 } };
         }),
 
+      loseHeart: () =>
+        set((state) => {
+          const session = state.session;
+          if (!session || session.mode !== 'challenge' || state.screen !== 'playing') return state;
+          const hearts = Math.max(0, session.hearts - 1);
+          return { session: { ...session, hearts }, screen: hearts === 0 ? 'tryAgain' : state.screen };
+        }),
+
       completeLevel: () => {
-        const { session, levelRecords, unlockedLevels } = get();
+        const { session, levelRecords, unlockedLevels, challengeRecords } = get();
         if (!session) return;
+        if (session.mode === 'challenge') {
+          const stars = computeAwardedStars(session);
+          set({
+            screen: 'levelComplete',
+            challengeRecords: { ...challengeRecords, [session.levelId]: Math.max(challengeRecords[session.levelId] ?? 0, stars) },
+          });
+          return;
+        }
         // Thieves mode is free play: no records or unlocks.
         if (session.mode === 'thieves') {
           set({ screen: 'levelComplete' });
@@ -464,6 +502,7 @@ export const useGameStore = create<GameState>()(
         costume: state.costume,
         skin: state.skin,
         tool: state.tool,
+        challengeRecords: state.challengeRecords,
       }),
       // Check everything read back from storage. Values a parent's browser may
       // have tampered with or corrupted must never crash the game.

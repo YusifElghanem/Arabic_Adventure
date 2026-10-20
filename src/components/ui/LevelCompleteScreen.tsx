@@ -15,7 +15,7 @@ export default function LevelCompleteScreen() {
 
   if (!session) return null;
   // This level's letter(s) only: with 28 letters the whole shelf no longer fits.
-  const thieves = session.mode === 'thieves';
+  const thieves = session.mode !== 'adventure';
   const levelLetters = (thieves ? LETTERS[session.levelId - 1] : letterForLevel(session.levelId))?.letter ?? null;
   const letters = ARABIC_LETTERS.filter(
     (letter) => (thieves || lettersDiscovered.includes(letter)) && (levelLetters ? letter === levelLetters : letter === 'أ' || letter === 'ب'),

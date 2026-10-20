@@ -1,5 +1,5 @@
 import type { LevelGoals } from '@/stores/useGameStore';
-import { generateGuardLevel, generateTemplateLevel } from './levelGenerator';
+import { generateChallengeLevel, generateGuardLevel, generateTemplateLevel } from './levelGenerator';
 import { LETTERS, TOTAL_LEVELS, letterForLevel, type LetterSpec } from './letters';
 
 /**
@@ -17,7 +17,20 @@ export interface PlatformSpec {
   middles: number;
   /** Skip tall decorations (trees) where a mechanic needs open space above. */
   sparse?: boolean;
+  /** A moving platform: swings ±dx / ±dy around its spot, one full swing per `period` seconds. */
+  move?: { dx: number; dy: number; period: number; phase?: number };
 }
+
+/**
+ * Thief kinds (challenge mode mixes them per world):
+ * - looper: loops over the arena (the easy one).
+ * - dasher: darts away when the child comes close.
+ * - armored: wears a candy helmet that needs one extra touch.
+ * - blinker: pops to another spot on its loop every few seconds.
+ * - splitter: when caught, splits into two little thieves.
+ * - king: big, three touches, throws more candy (last letter of a world).
+ */
+export type ThiefKind = 'looper' | 'dasher' | 'armored' | 'blinker' | 'splitter' | 'king';
 
 /** Where each learning mechanic sits. Positions are world pixels; `groundY` is a surface. */
 export interface LevelMechanics {
@@ -55,6 +68,11 @@ export interface GuardMechanics {
   entries: readonly { x: number; y: number }[];
   /** The loop a thief flies while carrying its letter: centre, half-width, base height, bob. */
   roam: { cx: number; halfWidth: number; y: number; bob: number };
+  /** Challenge mode: the thieves in order (absent = all loopers). */
+  cast?: readonly ThiefKind[];
+  /** Challenge mode: thieves speed multiplier, and seconds between candy throws (0 = none). */
+  speed?: number;
+  throwEvery?: number;
 }
 
 /** 'classic' = hand-made Level 1 (أ and ب); 'template' = generated from a letter; 'guard' = thieves mode. */
@@ -146,3 +164,16 @@ export function getGuardLevel(id: number): LevelDefinition | undefined {
   if (!spec) return undefined;
   return (GUARD_LEVELS[id] ??= generateGuardLevel(spec, id));
 }
+
+const CHALLENGE_LEVELS: Record<number, LevelDefinition> = {};
+
+/** Challenge mode arena: a different map and cast for every letter (id 1..28). */
+export function getChallengeLevel(id: number): LevelDefinition | undefined {
+  const spec = LETTERS[id - 1];
+  if (!spec) return undefined;
+  return (CHALLENGE_LEVELS[id] ??= generateChallengeLevel(spec, id));
+}
+
+/** How many thieves must become friends (a splitter brings two little ones). */
+export const thiefCount = (guard: GuardMechanics): number =>
+  guard.cast ? guard.cast.reduce((n, kind) => n + (kind === 'splitter' ? 3 : 1), 0) : guard.thieves;

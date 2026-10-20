@@ -17,10 +17,11 @@ export const thiefIcon = () => (thiefUri ??= toDataUri(thiefSvg(false)));
 export default function LevelSelect({ onClose }: { onClose: () => void }) {
   const startLevel = useGameStore((s) => s.startLevel);
   const levelRecords = useGameStore((s) => s.levelRecords);
+  const challengeRecords = useGameStore((s) => s.challengeRecords);
   const unlockedLevels = useGameStore((s) => s.unlockedLevels);
   const next = Math.max(1, ...unlockedLevels);
   const [mode, setMode] = useState<GameMode>('adventure');
-  const count = mode === 'thieves' ? THIEF_LEVEL_COUNT : LEVEL_COUNT;
+  const count = mode === 'adventure' ? LEVEL_COUNT : THIEF_LEVEL_COUNT;
 
   return (
     <div
@@ -31,13 +32,13 @@ export default function LevelSelect({ onClose }: { onClose: () => void }) {
     >
       <div dir="ltr" className="flex shrink-0 items-center justify-between p-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
         <div className="flex gap-3" role="tablist">
-          {(['adventure', 'thieves'] as const).map((m) => (
+          {(['adventure', 'thieves', 'challenge'] as const).map((m) => (
             <button
               key={m}
               type="button"
               role="tab"
               aria-selected={mode === m}
-              aria-label={m === 'thieves' ? 'سارقين الحروف' : 'المراحل'}
+              aria-label={m === 'thieves' ? 'سارقين الحروف' : m === 'challenge' ? 'التحدي' : 'المراحل'}
               onClick={() => {
                 playSound('tap');
                 setMode(m);
@@ -46,7 +47,13 @@ export default function LevelSelect({ onClose }: { onClose: () => void }) {
                 mode === m ? 'bg-white ring-4 ring-amber-400' : 'bg-white/60 ring-2 ring-white'
               } ${m === 'adventure' ? 'text-amber-500' : ''}`}
             >
-              {m === 'thieves' ? <img src={thiefIcon()} alt="" className="size-12" /> : <GridIcon size={34} />}
+              {m === 'thieves' ? (
+                <img src={thiefIcon()} alt="" className="size-12" />
+              ) : m === 'challenge' ? (
+                <img src={`${import.meta.env.BASE_URL}emoji/fire.svg`} alt="" className="size-11" />
+              ) : (
+                <GridIcon size={34} />
+              )}
             </button>
           ))}
         </div>
@@ -65,11 +72,11 @@ export default function LevelSelect({ onClose }: { onClose: () => void }) {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
         <div dir="rtl" className="mx-auto grid max-w-4xl pt-2 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-4">
           {Array.from({ length: count }, (_, i) => i + 1).map((id) => {
-            const thieves = mode === 'thieves';
+            const thieves = mode !== 'adventure';
             const spec = thieves ? LETTERS[id - 1] : letterForLevel(id);
             const label = spec ? spec.letter : `${LETTERS[0].letter} ${LETTERS[1].letter}`;
             const color = spec?.color ?? LETTERS[1].color;
-            const stars = thieves ? -1 : (levelRecords[id]?.bestStars ?? 0);
+            const stars = mode === 'thieves' ? -1 : mode === 'challenge' ? (challengeRecords[id] ?? 0) : (levelRecords[id]?.bestStars ?? 0);
             return (
               <button
                 key={id}

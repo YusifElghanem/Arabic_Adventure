@@ -2145,6 +2145,58 @@ Build the cheapest four first.
   - It homes in on the nearest active thief within 900 px. With no thief, it
     floats and pops after 1.8 s.
 
+## 21.9 As built 2026-10-20: challenge mode (🔥), harder thieves, unique maps
+
+The owner's younger brother found the thieves mode too easy and wanted
+"every letter in a different map", harder. It's a third tab in the level
+select (Fluent `fire` emoji). The easy modes stay failure-free.
+
+- **Store:** `GameMode 'challenge'`, `CHALLENGE_HEARTS = 3`, `session.hearts`.
+  - `loseHeart()` (challenge + playing only) goes to screen `'tryAgain'` at 0.
+    `TryAgainScreen` shows a giggling thief, empty hearts, and home + a big
+    pulsing replay. No words.
+  - Stars = hearts kept (`computeAwardedStars`). The best per letter goes in
+    the persisted `challengeRecords` (1..28), shown on the challenge tiles.
+- **Maps:** `generateChallengeLevel(spec, id)`, seed `id*4241+77`, cached in
+  `getChallengeLevel`. All 28 layouts differ (tested).
+  - 4–5 islands, y 780–1080, steps ±140, ordinary gaps 130–200. The letter
+    stands on the middle island (4–5 middles).
+  - Small floating steps 150–200 up over every other gap.
+  - From world 2, one gap is 320–360 wide with a platform swinging across it
+    (`move.dx = gap/2 − 70`, period 4.2 − 0.15·world). It can also be crossed
+    with the double jump.
+  - From world 4, the first step becomes a lift (`dy` 70, period 3.6).
+- **Moving platforms** (`PlatformSpec.move {dx, dy, period, phase?}`): a
+  dynamic, immovable, gravity-free body. Each frame `Platform.update` sets
+  velocity = (target − pos)/dt, so it never drifts and Arcade carries the
+  rider. Tiles follow the body. No scenery on movers.
+- **Cast** (`CHALLENGE_CAST` per world, shuffled per letter; `guard.cast`):
+  - Kinds: looper, dasher, armored, blinker, splitter, and the king, who
+    comes last on the 4th letter of each world and on ي.
+  - `thiefCount` counts a splitter as 3.
+  - Max at once: 3, or 4 from world 4. Spawns every 2.2 s.
+  - `guard.speed` = 1.25 + 0.08·world.
+  - Kind table in `Thief.ts`:
+    - dasher: tint peach, darts away 460 px/s for 0.5 s when the child is
+      within 240 px, cooldown 2.2 s.
+    - armored: 2 hits; the candy helmet flies off on the first.
+    - blinker: tint cyan, poofs to another spot on its loop every 2.4 s.
+    - splitter: tint green; when caught it bursts into 2 small, faster
+      loopers that rush to steal again.
+    - king: ×1.55 size, crown, 3 hits, throws twice as often.
+  - Any extra hit gives 0.8 s of grace and a bounce away.
+- **Candy** (`CandyShot`, art `thief-candy`):
+  - Roaming thieves within 900 px of the child toss one every
+    `throwEvery = max(2, 3.4 − 0.2·world)` s (±20%). It flies straight at
+    where the child was, at 240 + 15·world px/s, for up to 4 s.
+  - A hit within 52 px: `Player.hurt` (knock-back 300/−420, 0.25 s without
+    control, 1.6 s of blinking during which nothing hits) and `loseHeart`.
+  - Bubbles pop candies.
+  - Falling into the cloud sea also costs a heart (`PlayerOptions.onFall`),
+    and the bubble still floats the child home.
+- Rewards: 5 coins per friend (3 in the easy mode). HUD: hearts, plus one
+  thief face with a "left" count when there are more than 8 thieves.
+
 ## 22. Conventions
 
 ### 22.1 Code

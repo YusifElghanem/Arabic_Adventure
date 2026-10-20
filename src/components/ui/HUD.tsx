@@ -3,7 +3,7 @@ import { playSound } from '@/utils/sound';
 import { thiefIcon } from './LevelSelect';
 import { thiefSvg } from '@/game/art/thief';
 import { toDataUri } from '@/game/art/svg';
-import { PauseIcon, SoundOffIcon, SoundOnIcon, StarIcon, SunIcon, CoinIcon } from './icons';
+import { HeartIcon, PauseIcon, SoundOffIcon, SoundOnIcon, StarIcon, SunIcon, CoinIcon } from './icons';
 
 /**
  * Icon-only heads-up display over the canvas. The smiling sun's ring fills
@@ -19,8 +19,9 @@ export default function HUD() {
   const toggleMuted = useGameStore((s) => s.toggleMuted);
   const pauseGame = useGameStore((s) => s.pauseGame);
   const coins = useGameStore((s) => s.coins);
-  const thievesTotal = useGameStore((s) => (s.session?.mode === 'thieves' ? s.session.thievesTotal : 0));
+  const thievesTotal = useGameStore((s) => (s.session && s.session.mode !== 'adventure' ? s.session.thievesTotal : 0));
   const befriended = useGameStore((s) => s.session?.thievesBefriended ?? 0);
+  const hearts = useGameStore((s) => (s.session?.mode === 'challenge' ? s.session.hearts : -1));
 
   return (
     <div
@@ -44,7 +45,23 @@ export default function HUD() {
             />
           ))}
         </div>
-        {thievesTotal > 0 && (
+        {hearts >= 0 && (
+          <div dir="ltr" className="ms-1 flex items-center gap-0.5" aria-label={`${hearts}`}>
+            {Array.from({ length: 3 }, (_, i) => (
+              <HeartIcon key={`${i}-${i < hearts}`} size={34} filled={i < hearts} className={i < hearts ? '' : 'animate-[wiggle_300ms_ease-in-out_2]'} />
+            ))}
+          </div>
+        )}
+        {thievesTotal > 8 && (
+          // Many thieves (challenge): one face and how many are left.
+          <div dir="ltr" className="ms-1 flex items-center gap-1" aria-label={`${thievesTotal - befriended}`}>
+            <img src={befriended >= thievesTotal ? friendIcon() : thiefIcon()} alt="" className="size-10" />
+            <span key={befriended} className="font-display text-2xl font-extrabold text-violet-700 drop-shadow-[0_1px_0_#fff] animate-[star-pop_300ms_ease-out]">
+              {thievesTotal - befriended}
+            </span>
+          </div>
+        )}
+        {thievesTotal > 0 && thievesTotal <= 8 && (
           <div className="ms-1 flex items-center" aria-label={`${befriended} / ${thievesTotal}`}>
             {Array.from({ length: thievesTotal }, (_, i) => (
               <img

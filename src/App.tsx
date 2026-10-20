@@ -6,6 +6,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import PauseMenu from '@/components/ui/PauseMenu';
 import PhotoUploadModal from '@/components/ui/PhotoUploadModal';
 import TitleScreen from '@/components/ui/TitleScreen';
+import TryAgainScreen from '@/components/ui/TryAgainScreen';
 import TouchControls from '@/components/ui/TouchControls';
 import { useKeyboardControls } from '@/hooks/useKeyboardControls';
 import { useGameStore } from '@/stores/useGameStore';
@@ -24,7 +25,7 @@ export default function App() {
   const pauseGame = useGameStore((s) => s.pauseGame);
   const resumeGame = useGameStore((s) => s.resumeGame);
   const exitLevel = useGameStore((s) => s.exitLevel);
-  const inGame = hasSession && (screen === 'playing' || screen === 'paused' || screen === 'levelComplete');
+  const inGame = hasSession && (screen === 'playing' || screen === 'paused' || screen === 'levelComplete' || screen === 'tryAgain');
   const [sceneReady, setSceneReady] = useState(false);
 
   useKeyboardControls(screen === 'playing');
@@ -75,6 +76,7 @@ export default function App() {
           )}
           {screen === 'paused' && <PauseMenu />}
           {screen === 'levelComplete' && <LevelCompleteScreen />}
+          {screen === 'tryAgain' && <TryAgainScreen />}
         </ErrorBoundary>
       ) : (
         <ErrorBoundary key="title">

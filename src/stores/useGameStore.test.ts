@@ -373,3 +373,23 @@ describe('thieves mode', () => {
     expect(s().levelRecords).toEqual({});
   });
 });
+
+describe('challenge mode', () => {
+  it('loses hearts down to "try again", and records stars = hearts kept', async () => {
+    const { useGameStore } = await loadStore();
+    const s = useGameStore.getState;
+    s().startLevel(5, 'challenge');
+    expect(s().session!.hearts).toBe(3);
+    s().loseHeart();
+    s().completeLevel();
+    expect(s().challengeRecords[5]).toBe(2);
+    s().startLevel(5, 'challenge');
+    s().loseHeart();
+    s().loseHeart();
+    s().loseHeart();
+    expect(s().screen).toBe('tryAgain');
+    s().loseHeart(); // ignored once the run is over
+    expect(s().session!.hearts).toBe(0);
+    expect(s().challengeRecords[5]).toBe(2);
+  });
+});

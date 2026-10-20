@@ -220,6 +220,19 @@ export const SunIcon = ({ size = 64, progress, ...props }: IconProps & { progres
   );
 };
 
+export const HeartIcon = ({ size = 32, filled = true, ...props }: IconProps & { filled?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden focusable={false} {...props}>
+    <path
+      d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 7.9 3.6 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.4 0 5.6 3.4 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2Z"
+      fill={filled ? '#ff4d6d' : 'rgba(255,255,255,0.45)'}
+      stroke={filled ? '#c9184a' : 'rgba(255,255,255,0.95)'}
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+    {filled && <path d="M6.5 8.2c.6-1 1.5-1.4 2.4-1.3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" fill="none" />}
+  </svg>
+);
+
 export const StarIcon = ({ size = 40, filled = true, ...props }: IconProps & { filled?: boolean }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden focusable={false} {...props}>
     <path

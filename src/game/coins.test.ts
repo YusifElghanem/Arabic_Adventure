@@ -48,3 +48,31 @@ describe('thieves arenas', () => {
     expect(getGuardLevel(29)).toBeUndefined();
   });
 });
+
+describe('challenge arenas', () => {
+  it('give every letter its own map and cast, with fair gaps', async () => {
+    const { getChallengeLevel, thiefCount } = await import('./levels');
+    const w = (m: number) => 96 * 2 + 128 * m;
+    const layouts = new Set<string>();
+    for (let id = 1; id <= 28; id++) {
+      const level = getChallengeLevel(id)!;
+      const guard = level.guard!;
+      layouts.add(JSON.stringify(level.platforms));
+      expect(guard.cast!.length).toBe(guard.thieves);
+      expect(thiefCount(guard)).toBeGreaterThanOrEqual(7);
+      expect(guard.cast!.includes('king')).toBe((id - 1) % 4 === 3 || id === 28);
+      // Islands left to right: ordinary gaps ≤ 200; a wider gap always has a moving platform in it.
+      const islands = level.platforms.filter((p) => !p.move && p.middles > 0).sort((a, b) => a.x - b.x);
+      const movers = level.platforms.filter((p) => p.move);
+      for (let i = 1; i < islands.length; i++) {
+        const left = islands[i - 1].x + w(islands[i - 1].middles);
+        const gap = islands[i].x - left;
+        if (gap > 200) expect(movers.some((m) => m.x > left && m.x < islands[i].x)).toBe(true);
+        else expect(gap).toBeGreaterThanOrEqual(130);
+        expect(Math.abs(islands[i].y - islands[i - 1].y)).toBeLessThanOrEqual(150);
+      }
+      expect(level.goals.totalStars).toBe(guard.stars.length);
+    }
+    expect(layouts.size).toBe(28);
+  });
+});

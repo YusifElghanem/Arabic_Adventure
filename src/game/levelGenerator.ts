@@ -1,6 +1,6 @@
 import { createRandom } from './art/svg';
 import { requiredDots, type LetterSpec } from './letters';
-import type { LevelDefinition, PlatformSpec } from './levels';
+import type { LevelDefinition, PlatformSpec, ThiefKind } from './levels';
 
 /**
  * Builds a complete, always-completable level from a letter (engine-free,
@@ -144,5 +144,110 @@ export function generateGuardLevel(spec: LetterSpec, id: number): LevelDefinitio
     letter: spec,
     goals: { totalStars: 3, letterDotsRequired: 0 },
     decorSeed: 500 + id,
+  };
+}
+
+/** Which thieves come in each world of challenge mode (shuffled per letter). */
+const CHALLENGE_CAST: Record<number, Partial<Record<ThiefKind, number>>> = {
+  1: { looper: 4, dasher: 3 },
+  2: { looper: 3, dasher: 3, armored: 2 },
+  3: { looper: 2, dasher: 3, armored: 2, blinker: 2 },
+  4: { dasher: 3, armored: 2, blinker: 2, splitter: 1 },
+  5: { looper: 2, dasher: 3, armored: 2, blinker: 2, splitter: 2 },
+  6: { dasher: 3, armored: 3, blinker: 3, splitter: 2 },
+  7: { dasher: 4, armored: 3, blinker: 3, splitter: 2 },
+};
+
+/**
+ * Challenge mode: every letter gets its own arena from its seed: 4–5 islands
+ * at different heights (gaps 130–200), small floating steps, and from world 2
+ * one wide gap bridged by a moving platform (or crossed with the double
+ * jump); from world 4 one floating step becomes a lift. The letter
+ * stands on the widest middle island. Thieves get faster and throw candy more
+ * often in later worlds, and the last letter of each world brings the king.
+ */
+export function generateChallengeLevel(spec: LetterSpec, id: number): LevelDefinition {
+  const random = createRandom(id * 4241 + 77);
+  const int = (min: number, max: number) => min + Math.floor(random() * (max - min + 1));
+  const world = spec.world;
+  const count = int(4, 5);
+  const letterAt = Math.floor(count / 2);
+  const wideGapAt = world >= 2 ? int(0, count - 2) : -1;
+  const islands: PlatformSpec[] = [];
+  const movers: PlatformSpec[] = [];
+  const steps: PlatformSpec[] = [];
+  let x = 200;
+  let y = int(900, 1050);
+  for (let i = 0; i < count; i++) {
+    const middles = i === letterAt ? int(4, 5) : int(1, 3);
+    islands.push({ x, y, middles, sparse: i === letterAt });
+    const w = widthOf(middles);
+    if (i === count - 1) break;
+    if (i === wideGapAt) {
+      // A gap too wide for one jump, bridged by a platform swinging across it.
+      const gap = int(320, 360);
+      movers.push({ x: x + w + gap / 2 - widthOf(0) / 2, y: y - int(0, 40), middles: 0, sparse: true, move: { dx: gap / 2 - 70, dy: 0, period: 4.2 - world * 0.15 } });
+      x += w + gap;
+    } else {
+      const gap = int(130, 200);
+      // Every other ordinary gap gets a small floating step above it.
+      if (i % 2 === 0) steps.push({ x: x + w + gap / 2 - widthOf(0) / 2, y: y - int(150, 200), middles: 0, sparse: true });
+      x += w + gap;
+    }
+    y = Math.max(780, Math.min(1080, y + int(-140, 140)));
+  }
+  const last = islands[islands.length - 1];
+  const width = last.x + widthOf(last.middles) + 240;
+  const letterIsland = islands[letterAt];
+  const letterX = letterIsland.x + widthOf(letterIsland.middles) / 2;
+  if (world >= 4 && steps.length > 0) {
+    // The first floating step becomes a lift bobbing up and down.
+    const step = steps.shift()!;
+    movers.push({ ...step, y: step.y + 20, move: { dx: 0, dy: 70, period: 3.6 } });
+  }
+  const grounds = islands.map((p) => p.y);
+  const avg = grounds.reduce((a, b) => a + b, 0) / grounds.length;
+  const top = Math.min(...grounds);
+
+  const pool: ThiefKind[] = [];
+  for (const [kind, n] of Object.entries(CHALLENGE_CAST[world])) for (let k = 0; k < (n ?? 0); k++) pool.push(kind as ThiefKind);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const index = id - 1;
+  if (index % 4 === 3 || index === 27) pool.push('king');
+
+  return {
+    id,
+    kind: 'guard',
+    world,
+    width,
+    height: GEN.height,
+    spawn: { x: islands[0].x + 120, y: islands[0].y },
+    groundY: Math.round(avg),
+    cloudSeaY: GEN.cloudSeaY,
+    platforms: [...islands, ...steps, ...movers],
+    guard: {
+      stars: [
+        { x: islands[0].x + widthOf(islands[0].middles) / 2, y: islands[0].y - GEN.starAbove },
+        ...[...steps, ...movers.filter((m) => m.move?.dy)].slice(0, 1).map((s) => ({ x: s.x + widthOf(0) / 2, y: s.y - GEN.starAbove })),
+        { x: last.x + widthOf(last.middles) / 2, y: last.y - GEN.starAbove },
+      ],
+      letter: { x: letterX, groundY: letterIsland.y },
+      thieves: pool.length,
+      maxAtOnce: world >= 4 ? 4 : 3,
+      entries: [
+        { x: -80, y: top - 260 },
+        { x: width + 80, y: top - 260 },
+      ],
+      roam: { cx: width / 2, halfWidth: width / 2 - 320, y: Math.round(avg - 200), bob: 110 },
+      cast: pool,
+      speed: 1.25 + world * 0.08,
+      throwEvery: Math.max(2, 3.4 - world * 0.2),
+    },
+    letter: spec,
+    goals: { totalStars: 2 + Math.min(1, steps.length + movers.filter((m) => m.move?.dy).length), letterDotsRequired: 0 },
+    decorSeed: 900 + id,
   };
 }

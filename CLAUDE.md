@@ -22,6 +22,8 @@ comments and commits in English.
 Non-negotiables for the audience:
 - No failure or punishment: no lives, no death. Falling into the cloud sea
   floats the child home in a bubble, and collected items are kept.
+  **Only exception:** the opt-in challenge mode (🔥 tab, for older siblings)
+  has 3 hearts and a gentle "try again" screen (HANDOFF 21.9).
 - Every jump is a full jump (no variable height: small kids tap), plus one
   double jump in the air (never required by a layout). Generous
   coyote time and jump buffer. Gaps ≤ 160 px (a jump covers ~290 px).
