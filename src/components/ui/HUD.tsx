@@ -1,5 +1,8 @@
 import { selectSunProgress, useGameStore } from '@/stores/useGameStore';
 import { playSound } from '@/utils/sound';
+import { thiefIcon } from './LevelSelect';
+import { thiefSvg } from '@/game/art/thief';
+import { toDataUri } from '@/game/art/svg';
 import { PauseIcon, SoundOffIcon, SoundOnIcon, StarIcon, SunIcon, CoinIcon } from './icons';
 
 /**
@@ -16,6 +19,8 @@ export default function HUD() {
   const toggleMuted = useGameStore((s) => s.toggleMuted);
   const pauseGame = useGameStore((s) => s.pauseGame);
   const coins = useGameStore((s) => s.coins);
+  const thievesTotal = useGameStore((s) => (s.session?.mode === 'thieves' ? s.session.thievesTotal : 0));
+  const befriended = useGameStore((s) => s.session?.thievesBefriended ?? 0);
 
   return (
     <div
@@ -39,6 +44,18 @@ export default function HUD() {
             />
           ))}
         </div>
+        {thievesTotal > 0 && (
+          <div className="ms-1 flex items-center" aria-label={`${befriended} / ${thievesTotal}`}>
+            {Array.from({ length: thievesTotal }, (_, i) => (
+              <img
+                key={i}
+                src={i < befriended ? friendIcon() : thiefIcon()}
+                alt=""
+                className={`-ms-1 size-9 ${i < befriended ? 'animate-[star-pop_500ms_cubic-bezier(.34,1.56,.64,1)]' : 'opacity-60 grayscale-[0.4]'}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div
@@ -87,3 +104,6 @@ function RoundButton({ label, onClick, children }: { label: string; onClick: () 
     </button>
   );
 }
+
+let friendUri: string | null = null;
+const friendIcon = () => (friendUri ??= toDataUri(thiefSvg(true)));

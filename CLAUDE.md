@@ -22,7 +22,8 @@ comments and commits in English.
 Non-negotiables for the audience:
 - No failure or punishment: no lives, no death. Falling into the cloud sea
   floats the child home in a bubble, and collected items are kept.
-- Every jump is a full jump (no variable height: small kids tap). Generous
+- Every jump is a full jump (no variable height: small kids tap), plus one
+  double jump in the air (never required by a layout). Generous
   coyote time and jump buffer. Gaps ≤ 160 px (a jump covers ~290 px).
 - The game UI is icon-only. Text is only for parents (photo dialog).
 - The character faces the viewer. Never mirror it, because that would show
@@ -64,12 +65,15 @@ src/
     EventBus.ts                Phaser-free typed events (level-ready, preload-progress)
     constants.ts               design height, physics feel (gravity, speeds, coyote…)
     levels.ts                  ENGINE-FREE level data (platforms, mechanic positions, goals)
+    levelGenerator.ts, letters.ts  letter table → template levels and thieves arenas
+    coins.ts, shop.ts          ENGINE-FREE coin placement and the shop catalogue
     assets.ts                  manifest: every SVG art piece → texture at 1×/2×
     art/                       all art as SVG generated in code (palette.ts, svg.ts helpers,
                                hills, clouds, platforms, flora, character, mechanics)
     world/                     ParallaxBackground, Platform, Decorations, Ambient
     player/                    controller.ts (pure, tested), Player.ts, PlayerPuppet.ts
-    mechanics/                 MysteryBlock, LetterB, FloatingLetterA, Star, GoalGate
+    mechanics/                 MysteryBlock, LetterB, FloatingLetterA, Star, GoalGate,
+                               LetterDisplay, WordFriend, Coin, GuardedLetter, Thief, BubbleShot
     scenes/                    Boot → Preload → Level
   utils/                       faceCropper (tested), sound (Web Audio synth), speech (ar TTS)
 scripts/e2e/                   Playwright play-tests (see its README)

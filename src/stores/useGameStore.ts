@@ -10,6 +10,12 @@ export type Outfit = 'onesie' | 'explorer';
 
 export const OUTFITS: readonly Outfit[] = ['onesie', 'explorer'] as const;
 
+/** 'adventure' = the letter levels; 'thieves' = guard a letter from the letter thieves. */
+export type GameMode = 'adventure' | 'thieves';
+
+/** Thieves mode has one arena per letter (ids 1..28 = letter index + 1). */
+export const THIEF_LEVEL_COUNT = 28;
+
 /** Top-level UI screen the app is currently showing. */
 export type GameScreen = 'title' | 'avatarSetup' | 'playing' | 'paused' | 'levelComplete';
 
@@ -42,6 +48,10 @@ export interface LevelGoals {
 /** Progress inside the level being played. Never persisted, so a reload starts the level fresh. */
 export interface LevelSession {
   levelId: number;
+  mode: GameMode;
+  /** Thieves mode: how many thieves come, and how many became friends. */
+  thievesTotal: number;
+  thievesBefriended: number;
   /** Increments on every (re)start so level content can remount from scratch. */
   runId: number;
   starsCollected: number;
@@ -98,7 +108,9 @@ interface GameActions {
 
   // Levels
   isLevelUnlocked: (levelId: number) => boolean;
-  startLevel: (levelId: number) => boolean;
+  startLevel: (levelId: number, mode?: GameMode) => boolean;
+  registerThieves: (total: number) => void;
+  befriendThief: () => void;
   registerLevelGoals: (goals: LevelGoals) => void;
   collectStar: () => void;
   collectLetterDot: () => void;
@@ -293,14 +305,18 @@ export const useGameStore = create<GameState>()(
       // (owner request). `unlockedLevels` still records progress for "Play".
       isLevelUnlocked: (levelId) => isValidLevelId(levelId),
 
-      startLevel: (levelId) => {
-        if (!isValidLevelId(levelId) || !get().isLevelUnlocked(levelId)) return false;
+      startLevel: (levelId, mode = 'adventure') => {
+        const valid = mode === 'thieves' ? Number.isInteger(levelId) && levelId >= 1 && levelId <= THIEF_LEVEL_COUNT : get().isLevelUnlocked(levelId);
+        if (!valid) return false;
         set((state) => ({
           runCounter: state.runCounter + 1,
           screen: 'playing',
           isPhotoModalOpen: false,
           session: {
             levelId,
+            mode,
+            thievesTotal: 0,
+            thievesBefriended: 0,
             runId: state.runCounter + 1,
             starsCollected: 0,
             totalStars: 0,
@@ -353,9 +369,24 @@ export const useGameStore = create<GameState>()(
             : { lettersDiscovered: [...state.lettersDiscovered, letter] },
         ),
 
+      registerThieves: (total) =>
+        set((state) => (state.session ? { session: { ...state.session, thievesTotal: total, thievesBefriended: 0 } } : state)),
+
+      befriendThief: () =>
+        set((state) => {
+          const session = state.session;
+          if (!session || session.thievesBefriended >= session.thievesTotal) return state;
+          return { session: { ...session, thievesBefriended: session.thievesBefriended + 1 } };
+        }),
+
       completeLevel: () => {
         const { session, levelRecords, unlockedLevels } = get();
         if (!session) return;
+        // Thieves mode is free play: no records or unlocks.
+        if (session.mode === 'thieves') {
+          set({ screen: 'levelComplete' });
+          return;
+        }
 
         const awarded = computeAwardedStars(session);
         const previous = levelRecords[session.levelId];
@@ -490,6 +521,7 @@ export const useGameStore = create<GameState>()(
 export const selectSunProgress = (state: GameState): number => {
   const session = state.session;
   if (!session) return 0;
+  if (session.mode === 'thieves') return session.thievesTotal ? clamp(session.thievesBefriended / session.thievesTotal, 0, 1) : 0;
   const goalTotal = session.totalStars + session.letterDotsRequired;
   if (goalTotal === 0) return 0;
   return clamp((session.starsCollected + session.letterDotsCollected) / goalTotal, 0, 1);

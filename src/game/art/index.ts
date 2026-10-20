@@ -1,3 +1,4 @@
+import { THIEF_ART } from './thief';
 import { CHARACTER_ART } from './character';
 import { MECHANIC_ART } from './mechanics';
 import { CLOUD_SEA_SIZE, CLOUDS, cloudSeaSvg, cloudSvg } from './clouds';
@@ -111,4 +112,5 @@ export const ART: readonly ArtPiece[] = [
   { key: ArtKeys.butterflyBlue, ...BUTTERFLY_SIZE, svg: () => butterflySvg(PALETTE.candyBlue, PALETTE.white) },
   ...CHARACTER_ART,
   ...MECHANIC_ART,
+  ...THIEF_ART,
 ];

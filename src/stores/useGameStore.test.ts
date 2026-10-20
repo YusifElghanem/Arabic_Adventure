@@ -355,3 +355,21 @@ describe('coins and shop', () => {
     expect(s().tool).toBeNull();
   });
 });
+
+describe('thieves mode', () => {
+  it('starts any of the 28 letters, counts friends, and completes without records', async () => {
+    const { useGameStore } = await loadStore();
+    const s = useGameStore.getState;
+    expect(s().startLevel(29, 'thieves')).toBe(false);
+    expect(s().startLevel(28, 'thieves')).toBe(true);
+    expect(s().session).toMatchObject({ mode: 'thieves', levelId: 28 });
+    s().registerThieves(2);
+    s().befriendThief();
+    s().befriendThief();
+    s().befriendThief();
+    expect(s().session!.thievesBefriended).toBe(2);
+    s().completeLevel();
+    expect(s().screen).toBe('levelComplete');
+    expect(s().levelRecords).toEqual({});
+  });
+});

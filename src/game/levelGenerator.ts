@@ -98,3 +98,51 @@ export function generateTemplateLevel(spec: LetterSpec, levelId: number): LevelD
     decorSeed: levelId,
   };
 }
+
+/**
+ * Thieves mode arena: a wide central island with the big letter, two side
+ * islands a little higher, and two small floating steps above the centre.
+ * Thieves fly in from both edges; carrying a letter they loop over the
+ * centre low enough to catch (walking or with a jump). More thieves in later
+ * worlds. Every gap is 140 px and every step-up 100–120 px.
+ */
+export function generateGuardLevel(spec: LetterSpec, id: number): LevelDefinition {
+  const ground = 1000;
+  const centre: PlatformSpec = { x: 700, y: ground, middles: 6, sparse: true };
+  const left: PlatformSpec = { x: 240, y: ground - 100, middles: 1 };
+  const right: PlatformSpec = { x: centre.x + widthOf(6) + 140, y: ground - 100, middles: 1 };
+  const stepA: PlatformSpec = { x: 860, y: ground - 120, middles: 0, sparse: true };
+  const stepB: PlatformSpec = { x: 1308, y: ground - 120, middles: 0, sparse: true };
+  const width = right.x + widthOf(1) + 240;
+  const cx = centre.x + widthOf(6) / 2;
+  return {
+    id,
+    kind: 'guard',
+    world: spec.world,
+    width,
+    height: GEN.height,
+    spawn: { x: centre.x + 120, y: ground },
+    groundY: ground,
+    cloudSeaY: GEN.cloudSeaY,
+    platforms: [left, centre, stepA, stepB, right],
+    guard: {
+      stars: [
+        { x: left.x + widthOf(1) / 2, y: left.y - GEN.starAbove },
+        { x: right.x + widthOf(1) / 2, y: right.y - GEN.starAbove },
+        { x: cx, y: ground - 330 },
+      ],
+      letter: { x: cx, groundY: ground },
+      thieves: 5 + Math.floor((spec.world - 1) / 2),
+      maxAtOnce: spec.world >= 5 ? 3 : 2,
+      entries: [
+        { x: -80, y: ground - 260 },
+        { x: width + 80, y: ground - 260 },
+      ],
+      // Thieves carrying a letter fly 90..250 px above the centre island.
+      roam: { cx, halfWidth: 620, y: ground - 170, bob: 80 },
+    },
+    letter: spec,
+    goals: { totalStars: 3, letterDotsRequired: 0 },
+    decorSeed: 500 + id,
+  };
+}

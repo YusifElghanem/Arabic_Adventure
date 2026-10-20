@@ -1,6 +1,6 @@
 import type { LevelGoals } from '@/stores/useGameStore';
-import { generateTemplateLevel } from './levelGenerator';
-import { TOTAL_LEVELS, letterForLevel, type LetterSpec } from './letters';
+import { generateGuardLevel, generateTemplateLevel } from './levelGenerator';
+import { LETTERS, TOTAL_LEVELS, letterForLevel, type LetterSpec } from './letters';
 
 /**
  * Catalog of the levels in this build: geometry and goals only, with no
@@ -43,8 +43,22 @@ export interface TemplateMechanics {
   goal: { x: number; groundY: number };
 }
 
-/** 'classic' = hand-made Level 1 (أ and ب); 'template' = generated from a letter. */
-export type LevelKind = 'classic' | 'template';
+/** Thieves mode arena: the child guards the big letter from the letter thieves. */
+export interface GuardMechanics {
+  stars: readonly { x: number; y: number }[];
+  letter: { x: number; groundY: number };
+  /** How many thieves come in this arena. */
+  thieves: number;
+  /** At most this many thieves at once. */
+  maxAtOnce: number;
+  /** Where thieves fly in from (just outside the world). */
+  entries: readonly { x: number; y: number }[];
+  /** The loop a thief flies while carrying its letter: centre, half-width, base height, bob. */
+  roam: { cx: number; halfWidth: number; y: number; bob: number };
+}
+
+/** 'classic' = hand-made Level 1 (أ and ب); 'template' = generated from a letter; 'guard' = thieves mode. */
+export type LevelKind = 'classic' | 'template' | 'guard';
 
 export interface LevelDefinition {
   id: number;
@@ -65,7 +79,9 @@ export interface LevelDefinition {
   mechanics?: LevelMechanics;
   /** Template levels only. */
   template?: TemplateMechanics;
-  /** Template levels only: the letter this level teaches. */
+  /** Thieves mode only. */
+  guard?: GuardMechanics;
+  /** Template and guard levels: the letter this level teaches. */
   letter?: LetterSpec;
   goals: LevelGoals;
   /** Seed for decoration scattering, so a level always looks the same. */
@@ -120,4 +136,13 @@ export function getLevelDefinition(levelId: number): LevelDefinition | undefined
   if (!spec) return undefined;
   // Generated once, then cached: generation is deterministic.
   return (LEVEL_DEFINITIONS[levelId] = generateTemplateLevel(spec, levelId));
+}
+
+const GUARD_LEVELS: Record<number, LevelDefinition> = {};
+
+/** Thieves mode arena for a letter (id = letter index + 1, so 1..28). */
+export function getGuardLevel(id: number): LevelDefinition | undefined {
+  const spec = LETTERS[id - 1];
+  if (!spec) return undefined;
+  return (GUARD_LEVELS[id] ??= generateGuardLevel(spec, id));
 }

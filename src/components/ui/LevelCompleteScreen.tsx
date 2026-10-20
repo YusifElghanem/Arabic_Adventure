@@ -1,6 +1,7 @@
 import { isLevelAvailable } from '@/game/levels';
 import { letterForLevel } from '@/game/letters';
-import { ARABIC_LETTERS, MAX_STARS_PER_LEVEL, computeAwardedStars, useGameStore } from '@/stores/useGameStore';
+import { ARABIC_LETTERS, MAX_STARS_PER_LEVEL, THIEF_LEVEL_COUNT, computeAwardedStars, useGameStore } from '@/stores/useGameStore';
+import { LETTERS } from '@/game/letters';
 import { HomeIcon, NextIcon, ReplayIcon, StarIcon, SunIcon, CoinIcon } from './icons';
 import { MenuButton } from './PauseMenu';
 
@@ -14,11 +15,14 @@ export default function LevelCompleteScreen() {
 
   if (!session) return null;
   // This level's letter(s) only: with 28 letters the whole shelf no longer fits.
-  const levelLetters = letterForLevel(session.levelId)?.letter ?? null;
-  const letters = ARABIC_LETTERS.filter((letter) => lettersDiscovered.includes(letter) && (levelLetters ? letter === levelLetters : letter === 'أ' || letter === 'ب'));
+  const thieves = session.mode === 'thieves';
+  const levelLetters = (thieves ? LETTERS[session.levelId - 1] : letterForLevel(session.levelId))?.letter ?? null;
+  const letters = ARABIC_LETTERS.filter(
+    (letter) => (thieves || lettersDiscovered.includes(letter)) && (levelLetters ? letter === levelLetters : letter === 'أ' || letter === 'ب'),
+  );
   const awarded = computeAwardedStars(session);
   const nextLevel = session.levelId + 1;
-  const hasNext = isLevelAvailable(nextLevel) && isLevelUnlocked(nextLevel);
+  const hasNext = thieves ? nextLevel <= THIEF_LEVEL_COUNT : isLevelAvailable(nextLevel) && isLevelUnlocked(nextLevel);
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-b from-amber-200/70 to-sky-300/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="أحسنت">
@@ -60,11 +64,11 @@ export default function LevelCompleteScreen() {
           <MenuButton label="الرئيسية" onClick={exitLevel} className="size-18 bg-violet-400">
             <HomeIcon size={36} />
           </MenuButton>
-          <MenuButton label="العب مرة أخرى" onClick={() => startLevel(session.levelId)} className="size-18 bg-amber-400">
+          <MenuButton label="العب مرة أخرى" onClick={() => startLevel(session.levelId, session.mode)} className="size-18 bg-amber-400">
             <ReplayIcon size={36} />
           </MenuButton>
           {hasNext && (
-            <MenuButton label="المرحلة التالية" onClick={() => startLevel(nextLevel)} className="size-24 bg-emerald-500">
+            <MenuButton label="المرحلة التالية" onClick={() => startLevel(nextLevel, session.mode)} className="size-24 bg-emerald-500">
               <NextIcon size={48} />
             </MenuButton>
           )}

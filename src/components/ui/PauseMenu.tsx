@@ -9,6 +9,7 @@ export default function PauseMenu() {
   const startLevel = useGameStore((s) => s.startLevel);
   const exitLevel = useGameStore((s) => s.exitLevel);
   const levelId = useGameStore((s) => s.session?.levelId ?? 1);
+  const mode = useGameStore((s) => s.session?.mode ?? 'adventure');
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-sky-900/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="إيقاف مؤقت">
@@ -19,7 +20,7 @@ export default function PauseMenu() {
         <MenuButton label="متابعة" onClick={() => resumeGame()} className="size-28 bg-emerald-500 animate-[gentle-pulse_1.6s_ease-in-out_infinite]">
           <PlayIcon size={60} />
         </MenuButton>
-        <MenuButton label="إعادة" onClick={() => startLevel(levelId)} className="size-20 bg-amber-400">
+        <MenuButton label="إعادة" onClick={() => startLevel(levelId, mode)} className="size-20 bg-amber-400">
           <ReplayIcon size={40} />
         </MenuButton>
       </div>

@@ -11,10 +11,13 @@ interface InputState {
   jumpHeld: boolean;
   /** Increments on every new jump press, so quick taps between frames are never lost. */
   jumpPresses: number;
+  /** Increments on every tool-button press (bubble wand). */
+  actionPresses: number;
   setLeft: (pressed: boolean) => void;
   setRight: (pressed: boolean) => void;
   pressJump: () => void;
   releaseJump: () => void;
+  pressAction: () => void;
   releaseAll: () => void;
 }
 
@@ -23,11 +26,13 @@ export const useInputStore = create<InputState>()((set) => ({
   right: false,
   jumpHeld: false,
   jumpPresses: 0,
+  actionPresses: 0,
   setLeft: (pressed) => set({ left: pressed }),
   setRight: (pressed) => set({ right: pressed }),
   pressJump: () =>
     set((state) => (state.jumpHeld ? state : { jumpHeld: true, jumpPresses: state.jumpPresses + 1 })),
   releaseJump: () => set({ jumpHeld: false }),
+  pressAction: () => set((state) => ({ actionPresses: state.actionPresses + 1 })),
   releaseAll: () => set({ left: false, right: false, jumpHeld: false }),
 }));
 

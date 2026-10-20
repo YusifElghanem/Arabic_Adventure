@@ -20,6 +20,8 @@ const STAR_CLEARANCE = 80;
 const widthOf = (p: PlatformSpec) => PLATFORM_CAP_WIDTH * 2 + PLATFORM_MID_WIDTH * p.middles;
 
 export function placeCoins(level: LevelDefinition): CoinSpot[] {
+  // Thieves arenas pay in thank-you coins from befriended thieves instead.
+  if (level.kind === 'guard') return [];
   const stars = level.mechanics?.stars ?? level.template?.stars ?? [];
   const spots: CoinSpot[] = [];
   const platforms = [...level.platforms].sort((a, b) => a.x - b.x);

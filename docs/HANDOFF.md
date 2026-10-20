@@ -2059,6 +2059,92 @@ Build the cheapest four first.
 
 ---
 
+## 21.8 As built 2026-10-20: double jump, coins, shop, letter thieves
+
+### Double jump (`controller.ts`, `constants.ts`)
+- `AIR_JUMPS = 1` and `DOUBLE_JUMP_SPEED = 900` (apex ≈ 202 px, a bit higher
+  than the ground jump's 182, at the owner's request). Only a *fresh* press in
+  the air double-jumps, so a press buffered just before landing still becomes
+  a ground jump once the double jump is spent. Landing resets it. The output
+  has `doubleJumped` (Player plays `boing` and a bigger puff). Level layouts
+  never *require* it.
+
+### Coins (`game/coins.ts`, `mechanics/Coin.ts`, art `coin`)
+- `placeCoins(level)` is engine-free and deterministic. It puts an arc of 3
+  coins over every gap ≥ 60 px (heights 88/128/88 above the lower surface),
+  and a row of 3 (64 px apart, 62 px up) on even-index, non-sparse platforms
+  after the first. Coins within 80 px of a star are dropped. Thieves arenas
+  return none.
+- On touch, `collectCoin()` adds straight to the persisted `coins` purse and
+  to `session.coinsCollected`, so leaving mid-level loses nothing. Replaying
+  pays again, which is fine for this audience.
+- The coin shows in the HUD (purse total), on level-complete (+N), and on the
+  title's shop button. React uses `CoinIcon` (same SVG as the game).
+- The magnet tool: coins within 260 px of the child glide in
+  (`Coin.pullTowards`).
+
+### Shop (`game/shop.ts`, `components/ui/ShopScreen.tsx`)
+- Catalogue (engine-free):
+  - Costumes: animal onesies, i.e. an ear style plus colours. bear 0 (default),
+    bunny 30, cat 40, dino 60, panda 80.
+  - Skins: colour sets that recolour any costume. natural 0 (the costume's
+    own colours), pink, mint and sky 25 each, gold 70, night 90.
+  - Tools: bubble 50, magnet 80.
+- Item ids are `kind:name`, and `STARTER_ITEMS` are owned from the start.
+- Store (persisted, validated in `mergeShop`): `coins`, `ownedItems`,
+  `costume`, `skin`, `tool`.
+  - `buyItem(id)` checks price and ownership, then equips the item.
+  - `equipItem(id)`: a costume or skin also sets `outfit: 'onesie'`. Tapping
+    the equipped tool again puts it away.
+- Art: `character.ts` has `OnesieLook {ears, colors}` and `onesieArt(look)`,
+  which returns the 4 onesie textures with the same keys. The dino spikes are
+  drawn on top of the hood, since there's no room above it.
+  - `LevelScene.preload` rebuilds those textures only when `lookId` changes
+    (registry key `onesieLook`).
+  - `AvatarPreview` takes `outfit`/`costume`/`skin` overrides, which the shop
+    uses for its previews.
+- UI is icon-only.
+  - Tabs: bear emoji, a colour swatch, bubbles emoji.
+  - Tapping a tile previews it. The big button shows coin + price (buy) or a
+    tick (wear). If the child can't afford it: a grey button, a soft wiggle
+    and a `bump` sound, never a buzzer.
+
+### Letter thieves mode ("سارقين الحروف")
+- Entry: the level-select screen has 2 tabs (grid = adventure, thief face =
+  thieves) showing all 28 letters. `startLevel(id, 'thieves')`, where id is
+  the letter index + 1 (1..28, `THIEF_LEVEL_COUNT`). The session carries
+  `mode`, `thievesTotal` and `thievesBefriended`.
+- Arena: `generateGuardLevel` in `levelGenerator.ts`, looked up with
+  `getGuardLevel(id)`.
+  - Platforms: a centre island (6 middles) at y 1000, side islands 100 px
+    higher, and two small steps 120 px up. All gaps are 140.
+  - The complete letter stands in the centre (`GuardedLetter`).
+  - Thieves: `5 + floor((world-1)/2)`, at most 2 at once (3 from world 5).
+  - Thieves enter from both edges at y 740. The loop:
+    `roam = {cx, halfWidth 620, y ground-170, bob 80}`.
+- `Thief` (Phaser):
+  - enter: flies at 170 px/s to the letter's grab point. On arrival it grabs
+    a copy of the letter (`giggle`), and the big letter fades and shrinks a
+    step.
+  - roam: loops at `ROAM_RATE` 0.24 rad/s (~150 px/s, slower than the child
+    runs) and **never leaves**.
+  - Catch: touching it within 85 px of the child's centre, or a bubble. The
+    thief giggles, the copy flies home (`restore`), the mask comes off
+    (`thief-friend` texture), and it flies away. Catching one on its way in
+    also counts.
+  - There is no losing state.
+- Each friend pays 3 coins. When all are friends: `GuardedLetter.celebrate()`,
+  `win`, `celebrateLetter(i)`, then `completeLevel()` after 3.6 s.
+  `completeLevel` in thieves mode only sets the screen (no records or
+  unlocks). Next and replay keep the mode.
+- HUD: the sun fills with befriended/total, plus a row of thief faces that
+  turn into friend faces.
+- Bubble wand (`BubbleShot`, any mode when `tool === 'bubble'`):
+  - Fired by the cyan touch button (`pressAction`, `actionPresses` in
+    `useInputStore`) or the X/Z/Enter/Shift keys. Cooldown 0.45 s.
+  - It homes in on the nearest active thief within 900 px. With no thief, it
+    floats and pops after 1.8 s.
+
 ## 22. Conventions
 
 ### 22.1 Code

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import { useInputStore } from '@/stores/useInputStore';
 import { unlockAudio } from '@/utils/sound';
 import { ArrowLeftIcon, ArrowRightIcon, JumpIcon } from './icons';
+import { useGameStore } from '@/stores/useGameStore';
 
 /**
  * Big on-screen buttons for tablets and phones: walk left and right on one
@@ -84,6 +85,8 @@ export default function TouchControls() {
   const setRight = useInputStore((s) => s.setRight);
   const pressJump = useInputStore((s) => s.pressJump);
   const releaseJump = useInputStore((s) => s.releaseJump);
+  const pressAction = useInputStore((s) => s.pressAction);
+  const hasBubbles = useGameStore((s) => s.tool === 'bubble');
 
   if (!isTouch) return null;
 
@@ -101,7 +104,12 @@ export default function TouchControls() {
           <ArrowRightIcon size={44} />
         </HoldButton>
       </div>
-      <div className="pointer-events-auto">
+      <div className="pointer-events-auto flex items-end gap-4">
+        {hasBubbles && (
+          <HoldButton label="فقاقيع" onPress={pressAction} onRelease={() => {}} className="size-20 bg-cyan-300/95 sm:size-24">
+            <img src={`${import.meta.env.BASE_URL}emoji/bubbles.svg`} alt="" className="size-12" draggable={false} />
+          </HoldButton>
+        )}
         <HoldButton label="اقفز" onPress={pressJump} onRelease={releaseJump} className="size-24 bg-amber-400/95 text-white sm:size-28">
           <JumpIcon size={52} />
         </HoldButton>

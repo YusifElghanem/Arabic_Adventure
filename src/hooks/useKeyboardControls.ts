@@ -4,6 +4,8 @@ import { useInputStore } from '@/stores/useInputStore';
 const LEFT_KEYS = new Set(['ArrowLeft', 'KeyA']);
 const RIGHT_KEYS = new Set(['ArrowRight', 'KeyD']);
 const JUMP_KEYS = new Set(['Space', 'ArrowUp', 'KeyW']);
+/** The equipped tool (bubble wand). */
+const ACTION_KEYS = new Set(['KeyX', 'KeyZ', 'Enter', 'ShiftLeft', 'ShiftRight']);
 
 /** Maps arrow keys / WASD / Space to the shared input store while `enabled`. */
 export function useKeyboardControls(enabled: boolean): void {
@@ -23,6 +25,8 @@ export function useKeyboardControls(enabled: boolean): void {
       else if (RIGHT_KEYS.has(event.code)) input.setRight(true);
       else if (JUMP_KEYS.has(event.code)) {
         if (!event.repeat) input.pressJump();
+      } else if (ACTION_KEYS.has(event.code)) {
+        if (!event.repeat) input.pressAction();
       } else return;
       // Stop the page scrolling on Space and the arrow keys.
       event.preventDefault();
